@@ -4,13 +4,19 @@ update_statements.py
 Checks the Federal Reserve website for new FOMC policy statements
 and adds them to index.html automatically.
 
-Run manually:   python update_statements.py
-Run by GitHub Action: automatically on weekdays at 6pm ET
+Normal mode (run by daily GitHub Action):
+    python update_statements.py
+    -> Checks for statements newer than the most recent one in index.html
+
+Backfill mode (run once to populate history):
+    python update_statements.py --backfill 2020-01-01
+    -> Fetches all statements from that date forward, skipping any already present
 
 Dependencies: requests, beautifulsoup4
 Install:       pip install requests beautifulsoup4
 """
 
+import argparse
 import json
 import re
 import sys
@@ -24,56 +30,87 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; FOMC-Tracker/1.0; +https://github.com)"
 }
 REQUEST_TIMEOUT = 30
-REQUEST_DELAY = 2  # seconds between requests, to be polite
+REQUEST_DELAY = 2  # seconds between requests, to be polite to the Fed's servers
 
 
-def get_current_statements(html: str) -> list:
-    """Extract the JSON data block from index.html."""
-    match = re.search(
-        r'<script type="application/json" id="stmt-data">\s*(.*?)\s*</script>',
-        html,
-        re.DOTALL,
+def extract_statement_text(url):
+    """
+    Fetch a Fed press release page and extract just the policy statement text.
+
+    Uses 'For release at X:XX p.m.' as a reliable anchor point that works
+    across all statement eras: pre-COVID format, COVID-era language
+    ('The Federal Reserve is committed to using its full range of tools...'),
+    the 2022-2023 hiking cycle, current format, and emergency meetings.
+    """
+    print("  Fetching %s ..." % url)
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        print("  Error fetching statement: %s" % e)
+        return None
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    for tag in soup(["nav", "header", "footer", "script", "style", "aside"]):
+        tag.decompose()
+
+    full_text = soup.get_text("\n\n", strip=True)
+
+    release_match = re.search(
+        r"For release at \d+:\d+ [ap]\.m\.", full_text, re.IGNORECASE
     )
-    if not match:
-        raise ValueError("Could not find <script id='stmt-data'> block in index.html")
-    return json.loads(match.group(1))
+    media_match = re.search(r"For media inquiries", full_text)
+
+    if not media_match:
+        print("  Warning: could not find page anchors.")
+        return None
+
+    start = release_match.end() if release_match else 0
+    raw = full_text[start : media_match.start()]
+
+    SKIP = {"share", "share:", "pdf", ""}
+    chunks = re.split(r"\n{2,}", raw)
+    paragraphs = [
+        c.strip()
+        for c in chunks
+        if c.strip() and c.strip().lower() not in SKIP and len(c.strip()) > 30
+    ]
+
+    if not paragraphs:
+        print("  Warning: no paragraphs found.")
+        return None
+
+    return "\n\n".join(paragraphs)
 
 
-def find_new_statement_urls(latest_iso: str) -> list:
-    """
-    Scrape the Fed's FOMC press releases page and return a sorted list of
-    (date, url) tuples for statements newer than latest_iso (YYYY-MM-DD).
-    """
-    latest = datetime.strptime(latest_iso, "%Y-%m-%d").date()
+def find_statement_urls_since(start_date):
+    """Return sorted list of (date, url) for all FOMC statements on or after start_date."""
     found = []
-
-    # Check current year, and previous year in case we're running in January
     current_year = date.today().year
-    years = [current_year]
-    if date.today().month == 1:
-        years.append(current_year - 1)
 
-    for year in years:
-        url = f"https://www.federalreserve.gov/newsevents/pressreleases/{year}-press-fomc.htm"
-        print(f"Checking {url} ...")
+    for year in range(start_date.year, current_year + 1):
+        listing_url = (
+            "https://www.federalreserve.gov"
+            "/newsevents/pressreleases/%d-press-fomc.htm" % year
+        )
+        print("Scanning %s ..." % listing_url)
         try:
-            resp = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
+            resp = requests.get(listing_url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
             resp.raise_for_status()
         except requests.RequestException as e:
-            print(f"  Warning: could not fetch {url}: {e}")
+            print("  Warning: could not fetch %d listing: %s" % (year, e))
             continue
 
         soup = BeautifulSoup(resp.text, "html.parser")
         for link in soup.find_all("a", href=True):
-            href = link["href"]
-            m = re.search(r"monetary(\d{8})a\.htm", href)
+            m = re.search(r"monetary(\d{8})a\.htm", link["href"])
             if not m:
                 continue
             stmt_date = datetime.strptime(m.group(1), "%Y%m%d").date()
-            if stmt_date > latest:
+            if stmt_date >= start_date:
                 full_url = (
                     "https://www.federalreserve.gov"
-                    f"/newsevents/pressreleases/monetary{m.group(1)}a.htm"
+                    "/newsevents/pressreleases/monetary%sa.htm" % m.group(1)
                 )
                 found.append((stmt_date, full_url))
 
@@ -82,89 +119,45 @@ def find_new_statement_urls(latest_iso: str) -> list:
     return sorted(set(found))
 
 
-def extract_statement_text(url: str) -> str | None:
-    """
-    Fetch a Fed press release page and extract just the policy statement text,
-    with paragraphs separated by double newlines.
-    Returns None if extraction fails.
-    """
-    print(f"  Fetching {url} ...")
-    try:
-        resp = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
-        resp.raise_for_status()
-    except requests.RequestException as e:
-        print(f"  Error fetching statement: {e}")
-        return None
-
-    soup = BeautifulSoup(resp.text, "html.parser")
-
-    # Strip navigation, scripts, styles, and other boilerplate
-    for tag in soup(["nav", "header", "footer", "script", "style", "aside"]):
-        tag.decompose()
-
-    paragraphs = []
-    collecting = False
-
-    # Opening paragraph patterns used historically by the Fed
-    OPENING_PATTERNS = re.compile(
-        r"^(Available indicators|Recent indicators|Economic activity|"
-        r"The labor market|Information received since|Job gains)",
-        re.IGNORECASE,
+def get_current_statements(html):
+    match = re.search(
+        r'<script type="application/json" id="stmt-data">\s*(.*?)\s*</script>',
+        html, re.DOTALL,
     )
-    STOP_PHRASES = ("For media inquiries", "Implementation Note", "Last Update:")
-
-    for p in soup.find_all("p"):
-        # Normalize internal whitespace
-        text = " ".join(p.get_text().split())
-        if not text:
-            continue
-
-        if not collecting:
-            if OPENING_PATTERNS.match(text):
-                collecting = True
-
-        if collecting:
-            if any(text.startswith(stop) for stop in STOP_PHRASES):
-                break
-            if len(text) > 20:
-                paragraphs.append(text)
-
-    if not paragraphs:
-        print("  Warning: no statement paragraphs found — page structure may have changed.")
-        return None
-
-    return "\n\n".join(paragraphs)
+    if not match:
+        raise ValueError("Could not find <script id='stmt-data'> block in index.html")
+    return json.loads(match.group(1))
 
 
-def format_display_date(d: date) -> str:
-    """Format a date as 'Month D, YYYY' (no leading zero on day)."""
-    # %-d works on Linux/macOS; on Windows use %#d
-    try:
-        return d.strftime("%-d").join([d.strftime("%B "), d.strftime(", %Y")])
-    except ValueError:
-        return d.strftime("%B %#d, %Y")  # Windows fallback
-
-
-def update_index_html(html: str, new_entries: list) -> str:
-    """Replace the JSON data block in index.html with the updated statement list."""
+def update_index_html(html, updated_statements):
     match = re.search(
         r'(<script type="application/json" id="stmt-data">)\s*(.*?)\s*(</script>)',
-        html,
-        re.DOTALL,
+        html, re.DOTALL,
     )
     if not match:
         raise ValueError("Could not find <script id='stmt-data'> block to update")
-
-    existing = json.loads(match.group(2))
-    existing.extend(new_entries)
-
-    updated_json = json.dumps(existing, indent=2, ensure_ascii=False)
-    replacement = f"{match.group(1)}\n{updated_json}\n{match.group(3)}"
+    new_json = json.dumps(updated_statements, indent=2, ensure_ascii=False)
+    replacement = "%s\n%s\n%s" % (match.group(1), new_json, match.group(3))
     return html[: match.start()] + replacement + html[match.end() :]
 
 
+def format_display_date(d):
+    """Format date as 'Month D, YYYY' with no leading zero."""
+    try:
+        return d.strftime("%B %-d, %Y")  # Linux/macOS
+    except ValueError:
+        return d.strftime("%B %#d, %Y")  # Windows
+
+
 def main():
-    # Read index.html
+    parser = argparse.ArgumentParser(description="Update FOMC statements in index.html")
+    parser.add_argument(
+        "--backfill",
+        metavar="YYYY-MM-DD",
+        help="Fetch all statements from this date forward (use for initial population)",
+    )
+    args = parser.parse_args()
+
     try:
         with open("index.html", "r", encoding="utf-8") as f:
             html = f.read()
@@ -172,28 +165,40 @@ def main():
         print("Error: index.html not found. Run this script from the repo root.")
         sys.exit(1)
 
-    # Get current latest statement date
-    statements = get_current_statements(html)
-    latest_iso = max(s["isoDate"] for s in statements)
-    print(f"Latest statement in tracker: {latest_iso}")
+    current_statements = get_current_statements(html)
+    existing_dates = {s["isoDate"] for s in current_statements}
 
-    # Find any newer statements on the Fed's website
-    new_urls = find_new_statement_urls(latest_iso)
-    if not new_urls:
+    if args.backfill:
+        try:
+            start_date = datetime.strptime(args.backfill, "%Y-%m-%d").date()
+        except ValueError:
+            print("Error: invalid date '%s'. Use YYYY-MM-DD format." % args.backfill)
+            sys.exit(1)
+        print("Backfill mode: fetching all statements since %s" % start_date)
+    else:
+        latest_iso = max(s["isoDate"] for s in current_statements)
+        start_date = datetime.strptime(latest_iso, "%Y-%m-%d").date()
+        print("Normal mode: checking for statements newer than %s" % latest_iso)
+
+    candidates = find_statement_urls_since(start_date)
+    new_candidates = [
+        (d, url) for d, url in candidates
+        if d.strftime("%Y-%m-%d") not in existing_dates
+    ]
+
+    if not new_candidates:
         print("No new statements found. Nothing to update.")
         return
 
-    print(f"Found {len(new_urls)} new statement(s).")
+    print("\nFound %d statement(s) to fetch." % len(new_candidates))
 
-    # Fetch and parse each new statement
     new_entries = []
-    for stmt_date, url in new_urls:
+    for stmt_date, url in new_candidates:
         time.sleep(REQUEST_DELAY)
         text = extract_statement_text(url)
         if not text:
-            print(f"  Skipping {url} — could not extract text.")
+            print("  Skipping %s — could not extract text." % url)
             continue
-
         entry = {
             "date": format_display_date(stmt_date),
             "isoDate": stmt_date.strftime("%Y-%m-%d"),
@@ -201,19 +206,20 @@ def main():
             "text": text,
         }
         new_entries.append(entry)
-        print(f"  Added: {entry['date']}")
+        print("  Added: %s" % entry["date"])
 
     if not new_entries:
         print("No entries could be extracted. index.html not changed.")
         return
 
-    # Write updated index.html
-    updated_html = update_index_html(html, new_entries)
+    all_statements = current_statements + new_entries
+    all_statements.sort(key=lambda s: s["isoDate"])
+
+    updated_html = update_index_html(html, all_statements)
     with open("index.html", "w", encoding="utf-8") as f:
         f.write(updated_html)
 
-    print(f"\nDone. Added {len(new_entries)} statement(s) to index.html.")
-    print("The GitHub Action will commit and push this change automatically.")
+    print("\nDone. Added %d statement(s) to index.html." % len(new_entries))
 
 
 if __name__ == "__main__":
