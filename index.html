@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FOMC Statement Tracker</title>
+  <meta name="description" content="Word-by-word changes between Federal Reserve FOMC policy statements, updated after every meeting.">
+  <style>
+    :root {
+      --serif: Georgia, 'Times New Roman', serif;
+      --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      --navy: #1b3a5c;
+      --text: #1a1a1a;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --bg: #ffffff;
+      --bg-subtle: #f9fafb;
+      --added-bg: #dcfce7;
+      --added-text: #166534;
+      --removed-bg: #fee2e2;
+      --removed-text: #991b1b;
+      --vote-added-bg: #ecfdf5;
+      --vote-added-text: #059669;
+      --vote-removed-bg: #fff1f2;
+      --vote-removed-text: #be123c;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--sans);
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.6;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 3rem;
+    }
+
+    /* ── Header ── */
+    .site-header {
+      border-bottom: 2px solid var(--navy);
+      padding-bottom: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .site-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--navy);
+      letter-spacing: -0.02em;
+    }
+
+    .site-subtitle {
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .countdown {
+      display: inline-flex;
+      align-items: center;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-top: 10px;
+    }
+
+    /* ── Explainer ── */
+    details {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.875rem 1.125rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.875rem;
+      color: var(--muted);
+    }
+
+    details summary {
+      cursor: pointer;
+      font-weight: 500;
+      color: var(--text);
+      list-style: none;
+      user-select: none;
+    }
+
+    details summary::-webkit-details-marker { display: none; }
+
+    details summary::before { content: '▸  '; font-size: 0.7rem; }
+    details[open] summary::before { content: '▾  '; }
+
+    details p {
+      margin-top: 0.75rem;
+      line-height: 1.75;
+    }
+
+    /* ── Statement meta ── */
+    .stmt-meta { margin-bottom: 1rem; }
+
+    .stmt-date {
+      font-size: 1.375rem;
+      font-weight: 600;
+    }
+
+    .stmt-comparison {
+      font-size: 0.875rem;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .stmt-source {
+      font-size: 0.8rem;
+      margin-top: 4px;
+    }
+
+    .stmt-source a {
+      color: var(--navy);
+      text-decoration: none;
+    }
+
+    .stmt-source a:hover { text-decoration: underline; }
+
+    /* ── Legend ── */
+    .legend {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .chip {
+      padding: 1px 8px;
+      border-radius: 3px;
+      font-size: 0.8rem;
+    }
+
+    .chip-added { background: var(--added-bg); color: var(--added-text); }
+    .chip-removed {
+      background: var(--removed-bg);
+      color: var(--removed-text);
+      text-decoration: line-through;
+    }
+
+    /* ── No-changes banner ── */
+    .no-changes {
+      background: #f0f9ff;
+      border: 1px solid #bae6fd;
+      color: #0369a1;
+      padding: 0.625rem 1rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    /* ── Policy text ── */
+    .stmt-body {
+      font-family: var(--serif);
+      font-size: 1rem;
+      line-height: 1.875;
+      border-top: 1px solid var(--border);
+      padding-top: 1.25rem;
+      margin-bottom: 0;
+    }
+
+    .stmt-body p { margin-bottom: 1em; }
+    .stmt-body p:last-child { margin-bottom: 0; }
+
+    mark.ins {
+      background: var(--added-bg);
+      color: var(--added-text);
+      border-radius: 2px;
+      padding: 0 1px;
+    }
+
+    mark.del {
+      background: var(--removed-bg);
+      color: var(--removed-text);
+      border-radius: 2px;
+      padding: 0 1px;
+      text-decoration: line-through;
+    }
+
+    /* ── Voting section ── */
+    .voting-section {
+      border-top: 1px solid var(--border);
+      padding-top: 0.875rem;
+      margin-top: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .voting-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .voting-body {
+      font-family: var(--serif);
+      font-size: 0.875rem;
+      line-height: 1.75;
+      color: var(--muted);
+    }
+
+    .voting-body p { margin-bottom: 0.75em; }
+    .voting-body p:last-child { margin-bottom: 0; }
+
+    mark.vote-ins {
+      background: var(--vote-added-bg);
+      color: var(--vote-added-text);
+      border-radius: 2px;
+      padding: 0 1px;
+    }
+
+    mark.vote-del {
+      background: var(--vote-removed-bg);
+      color: var(--vote-removed-text);
+      border-radius: 2px;
+      padding: 0 1px;
+      text-decoration: line-through;
+    }
+
+    /* ── Timeline ── */
+    .timeline-section {
+      border-top: 1px solid var(--border);
+      padding-top: 1rem;
+    }
+
+    #slider {
+      width: 100%;
+      margin-bottom: 0.5rem;
+      accent-color: var(--navy);
+      cursor: pointer;
+    }
+
+    .timeline-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.7rem;
+      color: var(--muted);
+      line-height: 1.3;
+    }
+
+    .timeline-labels span { text-align: center; max-width: 60px; word-break: keep-all; }
+    .timeline-labels span:first-child { text-align: left; }
+    .timeline-labels span:last-child { text-align: right; }
+
+    .timeline-hint {
+      text-align: center;
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-top: 5px;
+    }
+
+    /* ── Footer ── */
+    .page-footer {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .copy-btn {
+      background: none;
+      border: 1px solid var(--border);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      color: var(--muted);
+      font-family: var(--sans);
+      transition: background 0.1s;
+    }
+
+    .copy-btn:hover { background: var(--bg-subtle); }
+
+    .fomc-link {
+      font-size: 0.8rem;
+      color: var(--navy);
+      text-decoration: none;
+    }
+
+    .fomc-link:hover { text-decoration: underline; }
+
+    @media (max-width: 500px) {
+      body { padding: 1.25rem 1rem 2rem; }
+      .site-title { font-size: 1.25rem; }
+      .stmt-date { font-size: 1.125rem; }
+      .stmt-body { font-size: 0.9375rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="site-title">FOMC Statement Tracker</div>
+    <div class="site-subtitle">Word-by-word changes between Federal Reserve policy statements</div>
+    <div class="countdown" id="countdown"></div>
+  </header>
+
+  <details>
+    <summary>How to use this tracker</summary>
+    <p>
+      Each position on the slider below represents one FOMC meeting. Drag left or right to move between
+      statements. When you select a meeting, the statement text is shown with changes highlighted compared
+      to the <em>previous</em> meeting: <mark class="ins" style="padding:0 4px;">green</mark> words were
+      added and <mark class="del" style="padding:0 4px;">red strikethrough</mark> words were removed.
+      The voting record appears below in lighter text with the same highlighting. The earliest statement
+      in the series is the baseline and shows no comparison.
+    </p>
+  </details>
+
+  <div class="stmt-meta">
+    <div class="stmt-date" id="stmt-date"></div>
+    <div class="stmt-comparison" id="stmt-comparison"></div>
+    <div class="stmt-source" id="stmt-source"></div>
+  </div>
+
+  <div class="legend">
+    <span class="chip chip-added">added</span>
+    <span class="chip chip-removed">removed</span>
+    <span>compared to previous meeting</span>
+  </div>
+
+  <div class="no-changes" id="no-changes-banner">
+    No changes to policy language from the previous statement.
+  </div>
+
+  <div class="stmt-body" id="stmt-body"></div>
+
+  <div class="voting-section">
+    <div class="voting-label">Committee vote</div>
+    <div class="voting-body" id="voting-body"></div>
+  </div>
+
+  <div class="timeline-section">
+    <input type="range" id="slider" min="0" step="1" value="0">
+    <div class="timeline-labels" id="timeline-labels"></div>
+    <div class="timeline-hint">← drag to compare meetings →</div>
+  </div>
+
+  <footer class="page-footer">
+    <button class="copy-btn" id="copy-btn" onclick="copyLink()">Copy page link</button>
+    <a class="fomc-link"
+       href="https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
+       target="_blank">FOMC meeting calendar ↗</a>
+  </footer>
+
+<script>
+/* ================================================================
+   DATA — UPDATE THIS SECTION AFTER EACH FOMC MEETING
+   ================================================================
+   HOW TO ADD A NEW STATEMENT:
+   1. Go to federalreserve.gov and find the new statement
+   2. Copy the full statement text (everything from "Recent indicators..."
+      through the voting paragraph)
+   3. Add a new object at the END of the STATEMENTS array below,
+      following the same format as the existing entries
+   4. The page auto-detects the most recent entry — no other changes needed
+
+   HOW TO UPDATE UPCOMING MEETINGS:
+   - The UPCOMING array holds statement release dates (2nd day of each
+     meeting) in YYYY-MM-DD format
+   - Past dates are ignored automatically
+   - Add new dates when the Fed publishes its annual meeting schedule
+   - Verify dates at: federalreserve.gov/monetarypolicy/fomccalendars.htm
+   ================================================================ */
+
+const STATEMENTS = [
+  {
+    date: "December 10, 2025",
+    isoDate: "2025-12-10",
+    url: "https://www.federalreserve.gov/newsevents/pressreleases/monetary20251210a.htm",
+    text: `Available indicators suggest that economic activity has been expanding at a moderate pace. Job gains have slowed this year, and the unemployment rate has edged up through September. More recent indicators are consistent with these developments. Inflation has moved up since earlier in the year and remains somewhat elevated.
+
+The Committee seeks to achieve maximum employment and inflation at the rate of 2 percent over the longer run. Uncertainty about the economic outlook remains elevated. The Committee is attentive to the risks to both sides of its dual mandate and judges that downside risks to employment rose in recent months.
+
+In support of its goals and in light of the shift in the balance of risks, the Committee decided to lower the target range for the federal funds rate by 1/4 percentage point to 3-1/2 to 3-3/4 percent. In considering the extent and timing of additional adjustments to the target range for the federal funds rate, the Committee will carefully assess incoming data, the evolving outlook, and the balance of risks. The Committee is strongly committed to supporting maximum employment and returning inflation to its 2 percent objective.
+
+In assessing the appropriate stance of monetary policy, the Committee will continue to monitor the implications of incoming information for the economic outlook. The Committee would be prepared to adjust the stance of monetary policy as appropriate if risks emerge that could impede the attainment of the Committee's goals. The Committee's assessments will take into account a wide range of information, including readings on labor market conditions, inflation pressures and inflation expectations, and financial and international developments.
+
+The Committee judges that reserve balances have declined to ample levels and will initiate purchases of shorter-term Treasury securities as needed to maintain an ample supply of reserves on an ongoing basis.
+
+Voting for the monetary policy action were Jerome H. Powell, Chair; John C. Williams, Vice Chair; Michael S. Barr; Michelle W. Bowman; Susan M. Collins; Lisa D. Cook; Philip N. Jefferson; Alberto G. Musalem; and Christopher J. Waller. Voting against this action were Stephen I. Miran, who preferred to lower the target range for the federal funds rate by 1/2 percentage point at this meeting; and Austan D. Goolsbee and Jeffrey R. Schmid, who preferred no change to the target range for the federal funds rate at this meeting.`
+  },
+  {
+    date: "January 28, 2026",
+    isoDate: "2026-01-28",
+    url: "https://www.federalreserve.gov/newsevents/pressreleases/monetary20260128a.htm",
+    text: `Available indicators suggest that economic activity has been expanding at a solid pace. Job gains have remained low, and the unemployment rate has shown some signs of stabilization. Inflation remains somewhat elevated.
+
+The Committee seeks to achieve maximum employment and inflation at the rate of 2 percent over the longer run. Uncertainty about the economic outlook remains elevated. The Committee is attentive to the risks to both sides of its dual mandate.
+
+In support of its goals, the Committee decided to maintain the target range for the federal funds rate at 3-1/2 to 3-3/4 percent. In considering the extent and timing of additional adjustments to the target range for the federal funds rate, the Committee will carefully assess incoming data, the evolving outlook, and the balance of risks. The Committee is strongly committed to supporting maximum employment and returning inflation to its 2 percent objective.
+
+In assessing the appropriate stance of monetary policy, the Committee will continue to monitor the implications of incoming information for the economic outlook. The Committee would be prepared to adjust the stance of monetary policy as appropriate if risks emerge that could impede the attainment of the Committee's goals. The Committee's assessments will take into account a wide range of information, including readings on labor market conditions, inflation pressures and inflation expectations, and financial and international developments.
+
+Voting for the monetary policy action were Jerome H. Powell, Chair; John C. Williams, Vice Chair; Michael S. Barr; Michelle W. Bowman; Lisa D. Cook; Beth M. Hammack; Philip N. Jefferson; Neel Kashkari; Lorie K. Logan; and Anna Paulson. Voting against this action were Stephen I. Miran and Christopher J. Waller, who preferred to lower the target range for the federal funds rate by 1/4 percentage point at this meeting.`
+  },
+  {
+    date: "March 18, 2026",
+    isoDate: "2026-03-18",
+    url: "https://www.federalreserve.gov/newsevents/pressreleases/monetary20260318a.htm",
+    text: `Available indicators suggest that economic activity has been expanding at a solid pace. Job gains have remained low, and the unemployment rate has been little changed in recent months. Inflation remains somewhat elevated.
+
+The Committee seeks to achieve maximum employment and inflation at the rate of 2 percent over the longer run. Uncertainty about the economic outlook remains elevated. The implications of developments in the Middle East for the U.S. economy are uncertain. The Committee is attentive to the risks to both sides of its dual mandate.
+
+In support of its goals, the Committee decided to maintain the target range for the federal funds rate at 3-1/2 to 3-3/4 percent. In considering the extent and timing of additional adjustments to the target range for the federal funds rate, the Committee will carefully assess incoming data, the evolving outlook, and the balance of risks. The Committee is strongly committed to supporting maximum employment and returning inflation to its 2 percent objective.
+
+In assessing the appropriate stance of monetary policy, the Committee will continue to monitor the implications of incoming information for the economic outlook. The Committee would be prepared to adjust the stance of monetary policy as appropriate if risks emerge that could impede the attainment of the Committee's goals. The Committee's assessments will take into account a wide range of information, including readings on labor market conditions, inflation pressures and inflation expectations, and financial and international developments.
+
+Voting for the monetary policy action were Jerome H. Powell, Chair; John C. Williams, Vice Chair; Michael S. Barr; Michelle W. Bowman; Lisa D. Cook; Beth M. Hammack; Philip N. Jefferson; Neel Kashkari; Lorie K. Logan; Anna Paulson; and Christopher J. Waller. Voting against this action was Stephen I. Miran, who preferred to lower the target range for the federal funds rate by 1/4 percentage point at this meeting.`
+  }
+];
+
+// Statement release dates for upcoming meetings (YYYY-MM-DD, second day of each meeting).
+// Past dates are ignored automatically. Update once per year when the Fed publishes its schedule.
+// Source: federalreserve.gov/monetarypolicy/fomccalendars.htm
+const UPCOMING = [
+  "2026-04-29",
+  "2026-06-18",
+  "2026-07-29",
+  "2026-09-16",
+  "2026-10-28",
+  "2026-12-09",
+  "2027-01-27"
+];
+
+/* ================================================================
+   APPLICATION CODE — no need to edit below this line
+   ================================================================ */
+
+function splitStatement(text) {
+  const marker = 'Voting for the monetary policy action';
+  const idx = text.indexOf(marker);
+  if (idx === -1) return { policy: text.trim(), voting: '' };
+  return { policy: text.slice(0, idx).trim(), voting: text.slice(idx).trim() };
+}
+
+function tokenize(text) {
+  const tokens = [];
+  text.split('\n\n').forEach((para, i, arr) => {
+    (para.match(/\S+/g) || []).forEach(w => tokens.push(w));
+    if (i < arr.length - 1) tokens.push('\xB6');
+  });
+  return tokens;
+}
+
+function computeDiff(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({ length: m + 1 }, () => new Int32Array(n + 1));
+  for (let i = m - 1; i >= 0; i--)
+    for (let j = n - 1; j >= 0; j--)
+      dp[i][j] = a[i] === b[j]
+        ? dp[i+1][j+1] + 1
+        : Math.max(dp[i+1][j], dp[i][j+1]);
+  const ops = [];
+  let i = 0, j = 0;
+  while (i < m || j < n) {
+    if (i < m && j < n && a[i] === b[j]) {
+      ops.push({ t: 0, v: b[j] }); i++; j++;
+    } else if (j < n && (i >= m || dp[i][j+1] >= dp[i+1][j])) {
+      ops.push({ t: 1, v: b[j] }); j++;
+    } else {
+      ops.push({ t: -1, v: a[i] }); i++;
+    }
+  }
+  return ops;
+}
+
+function esc(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function opsToHtml(ops, insClass, delClass) {
+  let html = '<p>', sp = false;
+  for (const o of ops) {
+    if (o.v === '\xB6') {
+      if (o.t !== -1) { html += '</p><p>'; sp = false; }
+      continue;
+    }
+    const s = sp ? ' ' : '', v = esc(o.v);
+    if (o.t === 0)       html += s + v;
+    else if (o.t === 1)  html += s + `<mark class="${insClass}">${v}</mark>`;
+    else                 html += s + `<mark class="${delClass}">${v}</mark>`;
+    sp = true;
+  }
+  return html + '</p>';
+}
+
+function plainHtml(text) {
+  return text.split('\n\n').map(p => `<p>${esc(p)}</p>`).join('');
+}
+
+function updateCountdown() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const next = UPCOMING
+    .map(d => new Date(d + 'T12:00:00'))
+    .find(d => d >= today);
+  const el = document.getElementById('countdown');
+  if (!next) { el.style.display = 'none'; return; }
+  const days = Math.round((next - today) / 86400000);
+  const label = next.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  if (days === 0)      el.textContent = `Next FOMC meeting: today — ${label}`;
+  else if (days === 1) el.textContent = `Next FOMC meeting: tomorrow — ${label}`;
+  else                 el.textContent = `Next FOMC meeting in ${days} days — ${label}`;
+}
+
+function buildTimeline() {
+  const slider = document.getElementById('slider');
+  const labelsEl = document.getElementById('timeline-labels');
+  const n = STATEMENTS.length;
+  slider.max = n - 1;
+  slider.value = n - 1; // default to most recent
+
+  labelsEl.innerHTML = STATEMENTS.map(s => {
+    const parts = s.date.split(' ');
+    return `<span>${parts[0].slice(0,3)} ${parts[2]}</span>`;
+  }).join('');
+
+  slider.addEventListener('input', () => render(parseInt(slider.value)));
+}
+
+function render(idx) {
+  const stmt = STATEMENTS[idx];
+  const { policy, voting } = splitStatement(stmt.text);
+
+  document.getElementById('stmt-date').textContent = stmt.date;
+  document.getElementById('stmt-source').innerHTML =
+    `<a href="${stmt.url}" target="_blank">View source statement on federalreserve.gov ↗</a>`;
+
+  const banner = document.getElementById('no-changes-banner');
+
+  if (idx === 0) {
+    document.getElementById('stmt-comparison').textContent =
+      'Baseline — earliest statement in this tracker';
+    banner.style.display = 'none';
+    document.getElementById('stmt-body').innerHTML = plainHtml(policy);
+    document.getElementById('voting-body').innerHTML = voting ? `<p>${esc(voting)}</p>` : '';
+    return;
+  }
+
+  const prev = STATEMENTS[idx - 1];
+  const { policy: prevPolicy, voting: prevVoting } = splitStatement(prev.text);
+
+  const norm = s => s.replace(/\s+/g, ' ').trim();
+  if (norm(policy) === norm(prevPolicy)) {
+    document.getElementById('stmt-comparison').textContent =
+      `No policy changes from ${prev.date}`;
+    banner.style.display = 'block';
+    document.getElementById('stmt-body').innerHTML = plainHtml(policy);
+  } else {
+    banner.style.display = 'none';
+    const ops = computeDiff(tokenize(prevPolicy), tokenize(policy));
+    const ins = ops.filter(o => o.t === 1 && o.v !== '\xB6').length;
+    const del = ops.filter(o => o.t === -1 && o.v !== '\xB6').length;
+    document.getElementById('stmt-comparison').textContent =
+      `vs. ${prev.date}: +${ins} word${ins !== 1 ? 's' : ''} added, ${del} removed`;
+    document.getElementById('stmt-body').innerHTML = opsToHtml(ops, 'ins', 'del');
+  }
+
+  // Voting section diff (muted styling)
+  if (voting && prevVoting) {
+    const vOps = computeDiff(tokenize(prevVoting), tokenize(voting));
+    document.getElementById('voting-body').innerHTML = opsToHtml(vOps, 'vote-ins', 'vote-del');
+  } else if (voting) {
+    document.getElementById('voting-body').innerHTML = `<p>${esc(voting)}</p>`;
+  } else {
+    document.getElementById('voting-body').innerHTML = '';
+  }
+}
+
+function copyLink() {
+  const btn = document.getElementById('copy-btn');
+  navigator.clipboard.writeText(window.location.href).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy page link'; }, 2000);
+  }).catch(() => {
+    btn.textContent = 'Copy failed';
+    setTimeout(() => { btn.textContent = 'Copy page link'; }, 2000);
+  });
+}
+
+// Initialize
+updateCountdown();
+buildTimeline();
+render(STATEMENTS.length - 1);
+</script>
+
+</body>
+</html>
