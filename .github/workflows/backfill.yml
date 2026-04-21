@@ -1,0 +1,55 @@
+name: Backfill Historical FOMC Statements
+
+# Run this ONCE to populate statements going back to a given date.
+# After it completes, the regular "Update FOMC Statements" workflow
+# handles all future updates automatically.
+#
+# HOW TO RUN:
+#   1. Go to the Actions tab in your GitHub repository
+#   2. Click "Backfill Historical FOMC Statements" in the left sidebar
+#   3. Click "Run workflow"
+#   4. Leave the start date as 2020-01-01 (or change it if you want)
+#   5. Click the green "Run workflow" button
+#   6. Watch the progress — it takes about 3-4 minutes to fetch ~50 statements
+
+on:
+  workflow_dispatch:
+    inputs:
+      start_date:
+        description: "Fetch statements on or after this date (YYYY-MM-DD)"
+        required: true
+        default: "2020-01-01"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4
+
+      - name: Run backfill
+        run: python update_statements.py --backfill ${{ github.event.inputs.start_date }}
+
+      - name: Commit and push updated index.html
+        run: |
+          git config user.name  "FOMC Tracker Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --cached --quiet \
+            && echo "No changes to commit." \
+            || (git commit -m "Backfill: add FOMC statements since ${{ github.event.inputs.start_date }}" && git push)
