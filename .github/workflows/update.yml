@@ -1,43 +1,51 @@
 name: Update FOMC Statements
- 
-# Runs automatically on weekdays at 6pm ET (23:00 UTC).
-# Also runs immediately on any push to main, and can be triggered manually.
-# Emergency FOMC meetings are also covered — the script checks daily.
- 
+
+# Runs on weekdays at 20:00 UTC, which is:
+#   4:00pm EDT (UTC-4) — covers March through November meetings
+#   3:00pm EST (UTC-5) — covers January and December meetings
+# Both are safely after the 2:00pm ET statement release time.
+# Also runs on push and can be triggered manually from the Actions tab.
+
 on:
   schedule:
-    - cron: "0 23 * * 1-5"   # weekdays at 6pm ET
+    - cron: "0 20 * * 1-5"
   push:
     branches: [main]
-  workflow_dispatch:           # manual trigger from the Actions tab
- 
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # suppresses Node.js 20 deprecation warning
+
 permissions:
-  contents: write              # needed to commit updated index.html back to repo
- 
+  contents: write
+
 jobs:
   update:
     runs-on: ubuntu-latest
- 
+
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
- 
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
- 
+
       - name: Install dependencies
         run: pip install requests beautifulsoup4
- 
+
       - name: Check for new FOMC statements
         run: python update_statements.py
- 
+
       - name: Commit and push if index.html changed
         run: |
           git config user.name  "FOMC Tracker Bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html
+          git diff --cached --quiet \
+            && echo "No changes to commit." \
+            || (git commit -m "Auto-update: add new FOMC statement" && git push)
           git diff --cached --quiet \
             && echo "No changes to commit." \
             || (git commit -m "Auto-update: add new FOMC statement" && git push)
