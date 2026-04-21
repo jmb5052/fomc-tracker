@@ -37,7 +37,6 @@
       padding: 2rem 1.5rem 3rem;
     }
 
-    /* ── Header ── */
     .site-header {
       border-bottom: 2px solid var(--navy);
       padding-bottom: 1rem;
@@ -69,7 +68,6 @@
       margin-top: 10px;
     }
 
-    /* ── Explainer ── */
     details {
       background: var(--bg-subtle);
       border: 1px solid var(--border);
@@ -89,16 +87,10 @@
     }
 
     details summary::-webkit-details-marker { display: none; }
-
     details summary::before { content: '▸  '; font-size: 0.7rem; }
     details[open] summary::before { content: '▾  '; }
+    details p { margin-top: 0.75rem; line-height: 1.75; }
 
-    details p {
-      margin-top: 0.75rem;
-      line-height: 1.75;
-    }
-
-    /* ── Statement meta ── */
     .stmt-meta { margin-bottom: 1rem; }
 
     .stmt-date {
@@ -117,14 +109,9 @@
       margin-top: 4px;
     }
 
-    .stmt-source a {
-      color: var(--navy);
-      text-decoration: none;
-    }
-
+    .stmt-source a { color: var(--navy); text-decoration: none; }
     .stmt-source a:hover { text-decoration: underline; }
 
-    /* ── Legend ── */
     .legend {
       display: flex;
       gap: 1rem;
@@ -135,12 +122,7 @@
       color: var(--muted);
     }
 
-    .chip {
-      padding: 1px 8px;
-      border-radius: 3px;
-      font-size: 0.8rem;
-    }
-
+    .chip { padding: 1px 8px; border-radius: 3px; font-size: 0.8rem; }
     .chip-added { background: var(--added-bg); color: var(--added-text); }
     .chip-removed {
       background: var(--removed-bg);
@@ -148,7 +130,6 @@
       text-decoration: line-through;
     }
 
-    /* ── No-changes banner ── */
     .no-changes {
       background: #f0f9ff;
       border: 1px solid #bae6fd;
@@ -160,14 +141,12 @@
       display: none;
     }
 
-    /* ── Policy text ── */
     .stmt-body {
       font-family: var(--serif);
       font-size: 1rem;
       line-height: 1.875;
       border-top: 1px solid var(--border);
       padding-top: 1.25rem;
-      margin-bottom: 0;
     }
 
     .stmt-body p { margin-bottom: 1em; }
@@ -188,7 +167,6 @@
       text-decoration: line-through;
     }
 
-    /* ── Voting section ── */
     .voting-section {
       border-top: 1px solid var(--border);
       padding-top: 0.875rem;
@@ -230,7 +208,6 @@
       text-decoration: line-through;
     }
 
-    /* ── Timeline ── */
     .timeline-section {
       border-top: 1px solid var(--border);
       padding-top: 1rem;
@@ -248,10 +225,9 @@
       justify-content: space-between;
       font-size: 0.7rem;
       color: var(--muted);
-      line-height: 1.3;
     }
 
-    .timeline-labels span { text-align: center; max-width: 60px; word-break: keep-all; }
+    .timeline-labels span { text-align: center; }
     .timeline-labels span:first-child { text-align: left; }
     .timeline-labels span:last-child { text-align: right; }
 
@@ -262,7 +238,6 @@
       margin-top: 5px;
     }
 
-    /* ── Footer ── */
     .page-footer {
       margin-top: 2rem;
       padding-top: 1rem;
@@ -283,17 +258,11 @@
       font-size: 0.8rem;
       color: var(--muted);
       font-family: var(--sans);
-      transition: background 0.1s;
     }
 
     .copy-btn:hover { background: var(--bg-subtle); }
 
-    .fomc-link {
-      font-size: 0.8rem;
-      color: var(--navy);
-      text-decoration: none;
-    }
-
+    .fomc-link { font-size: 0.8rem; color: var(--navy); text-decoration: none; }
     .fomc-link:hover { text-decoration: underline; }
 
     @media (max-width: 500px) {
@@ -315,12 +284,12 @@
   <details>
     <summary>How to use this tracker</summary>
     <p>
-      Each position on the slider below represents one FOMC meeting. Drag left or right to move between
-      statements. When you select a meeting, the statement text is shown with changes highlighted compared
-      to the <em>previous</em> meeting: <mark class="ins" style="padding:0 4px;">green</mark> words were
+      Each position on the slider represents one FOMC meeting. Drag left or right to move between
+      statements. The selected statement is shown with changes highlighted compared to the
+      <em>previous</em> meeting: <mark class="ins" style="padding:0 4px;">green</mark> words were
       added and <mark class="del" style="padding:0 4px;">red strikethrough</mark> words were removed.
-      The voting record appears below in lighter text with the same highlighting. The earliest statement
-      in the series is the baseline and shows no comparison.
+      The voting record appears below the policy text in lighter type with the same highlighting.
+      The earliest statement in the series is the baseline and shows no comparison.
     </p>
   </details>
 
@@ -360,75 +329,45 @@
        target="_blank">FOMC meeting calendar ↗</a>
   </footer>
 
-<script>
-/* ================================================================
-   DATA — UPDATE THIS SECTION AFTER EACH FOMC MEETING
-   ================================================================
-   HOW TO ADD A NEW STATEMENT:
-   1. Go to federalreserve.gov and find the new statement
-   2. Copy the full statement text (everything from "Recent indicators..."
-      through the voting paragraph)
-   3. Add a new object at the END of the STATEMENTS array below,
-      following the same format as the existing entries
-   4. The page auto-detects the most recent entry — no other changes needed
+  <!--
+  ============================================================
+  STATEMENT DATA
+  This block is read and updated automatically by the GitHub
+  Action (update_statements.py). You can also edit it manually.
 
-   HOW TO UPDATE UPCOMING MEETINGS:
-   - The UPCOMING array holds statement release dates (2nd day of each
-     meeting) in YYYY-MM-DD format
-   - Past dates are ignored automatically
-   - Add new dates when the Fed publishes its annual meeting schedule
-   - Verify dates at: federalreserve.gov/monetarypolicy/fomccalendars.htm
-   ================================================================ */
-
-const STATEMENTS = [
+  To add a statement manually:
+    1. Open this file in GitHub and click the pencil icon
+    2. Add a new JSON object at the END of the array below
+    3. Follow the format of the existing entries exactly
+    4. Commit — the site updates within ~30 seconds
+  ============================================================
+  -->
+  <script type="application/json" id="stmt-data">
+[
   {
-    date: "December 10, 2025",
-    isoDate: "2025-12-10",
-    url: "https://www.federalreserve.gov/newsevents/pressreleases/monetary20251210a.htm",
-    text: `Available indicators suggest that economic activity has been expanding at a moderate pace. Job gains have slowed this year, and the unemployment rate has edged up through September. More recent indicators are consistent with these developments. Inflation has moved up since earlier in the year and remains somewhat elevated.
-
-The Committee seeks to achieve maximum employment and inflation at the rate of 2 percent over the longer run. Uncertainty about the economic outlook remains elevated. The Committee is attentive to the risks to both sides of its dual mandate and judges that downside risks to employment rose in recent months.
-
-In support of its goals and in light of the shift in the balance of risks, the Committee decided to lower the target range for the federal funds rate by 1/4 percentage point to 3-1/2 to 3-3/4 percent. In considering the extent and timing of additional adjustments to the target range for the federal funds rate, the Committee will carefully assess incoming data, the evolving outlook, and the balance of risks. The Committee is strongly committed to supporting maximum employment and returning inflation to its 2 percent objective.
-
-In assessing the appropriate stance of monetary policy, the Committee will continue to monitor the implications of incoming information for the economic outlook. The Committee would be prepared to adjust the stance of monetary policy as appropriate if risks emerge that could impede the attainment of the Committee's goals. The Committee's assessments will take into account a wide range of information, including readings on labor market conditions, inflation pressures and inflation expectations, and financial and international developments.
-
-The Committee judges that reserve balances have declined to ample levels and will initiate purchases of shorter-term Treasury securities as needed to maintain an ample supply of reserves on an ongoing basis.
-
-Voting for the monetary policy action were Jerome H. Powell, Chair; John C. Williams, Vice Chair; Michael S. Barr; Michelle W. Bowman; Susan M. Collins; Lisa D. Cook; Philip N. Jefferson; Alberto G. Musalem; and Christopher J. Waller. Voting against this action were Stephen I. Miran, who preferred to lower the target range for the federal funds rate by 1/2 percentage point at this meeting; and Austan D. Goolsbee and Jeffrey R. Schmid, who preferred no change to the target range for the federal funds rate at this meeting.`
+    "date": "December 10, 2025",
+    "isoDate": "2025-12-10",
+    "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20251210a.htm",
+    "text": "Available indicators suggest that economic activity has been expanding at a moderate pace. Job gains have slowed this year, and the unemployment rate has edged up through September. More recent indicators are consistent with these developments. Inflation has moved up since earlier in the year and remains somewhat elevated.\n\nThe Committee seeks to achieve maximum employment and inflation at the rate of 2 percent over the longer run. Uncertainty about the economic outlook remains elevated. The Committee is attentive to the risks to both sides of its dual mandate and judges that downside risks to employment rose in recent months.\n\nIn support of its goals and in light of the shift in the balance of risks, the Committee decided to lower the target range for the federal funds rate by 1/4 percentage point to 3-1/2 to 3\u20113/4 percent. In considering the extent and timing of additional adjustments to the target range for the federal funds rate, the Committee will carefully assess incoming data, the evolving outlook, and the balance of risks. The Committee is strongly committed to supporting maximum employment and returning inflation to its 2 percent objective.\n\nIn assessing the appropriate stance of monetary policy, the Committee will continue to monitor the implications of incoming information for the economic outlook. The Committee would be prepared to adjust the stance of monetary policy as appropriate if risks emerge that could impede the attainment of the Committee's goals. The Committee's assessments will take into account a wide range of information, including readings on labor market conditions, inflation pressures and inflation expectations, and financial and international developments.\n\nThe Committee judges that reserve balances have declined to ample levels and will initiate purchases of shorter-term Treasury securities as needed to maintain an ample supply of reserves on an ongoing basis.\n\nVoting for the monetary policy action were Jerome H. Powell, Chair; John C. Williams, Vice Chair; Michael S. Barr; Michelle W. Bowman; Susan M. Collins; Lisa D. Cook; Philip N. Jefferson; Alberto G. Musalem; and Christopher J. Waller. Voting against this action were Stephen I. Miran, who preferred to lower the target range for the federal funds rate by 1/2 percentage point at this meeting; and Austan D. Goolsbee and Jeffrey R. Schmid, who preferred no change to the target range for the federal funds rate at this meeting."
   },
   {
-    date: "January 28, 2026",
-    isoDate: "2026-01-28",
-    url: "https://www.federalreserve.gov/newsevents/pressreleases/monetary20260128a.htm",
-    text: `Available indicators suggest that economic activity has been expanding at a solid pace. Job gains have remained low, and the unemployment rate has shown some signs of stabilization. Inflation remains somewhat elevated.
-
-The Committee seeks to achieve maximum employment and inflation at the rate of 2 percent over the longer run. Uncertainty about the economic outlook remains elevated. The Committee is attentive to the risks to both sides of its dual mandate.
-
-In support of its goals, the Committee decided to maintain the target range for the federal funds rate at 3-1/2 to 3-3/4 percent. In considering the extent and timing of additional adjustments to the target range for the federal funds rate, the Committee will carefully assess incoming data, the evolving outlook, and the balance of risks. The Committee is strongly committed to supporting maximum employment and returning inflation to its 2 percent objective.
-
-In assessing the appropriate stance of monetary policy, the Committee will continue to monitor the implications of incoming information for the economic outlook. The Committee would be prepared to adjust the stance of monetary policy as appropriate if risks emerge that could impede the attainment of the Committee's goals. The Committee's assessments will take into account a wide range of information, including readings on labor market conditions, inflation pressures and inflation expectations, and financial and international developments.
-
-Voting for the monetary policy action were Jerome H. Powell, Chair; John C. Williams, Vice Chair; Michael S. Barr; Michelle W. Bowman; Lisa D. Cook; Beth M. Hammack; Philip N. Jefferson; Neel Kashkari; Lorie K. Logan; and Anna Paulson. Voting against this action were Stephen I. Miran and Christopher J. Waller, who preferred to lower the target range for the federal funds rate by 1/4 percentage point at this meeting.`
+    "date": "January 28, 2026",
+    "isoDate": "2026-01-28",
+    "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20260128a.htm",
+    "text": "Available indicators suggest that economic activity has been expanding at a solid pace. Job gains have remained low, and the unemployment rate has shown some signs of stabilization. Inflation remains somewhat elevated.\n\nThe Committee seeks to achieve maximum employment and inflation at the rate of 2 percent over the longer run. Uncertainty about the economic outlook remains elevated. The Committee is attentive to the risks to both sides of its dual mandate.\n\nIn support of its goals, the Committee decided to maintain the target range for the federal funds rate at 3-1/2 to 3\u20113/4 percent. In considering the extent and timing of additional adjustments to the target range for the federal funds rate, the Committee will carefully assess incoming data, the evolving outlook, and the balance of risks. The Committee is strongly committed to supporting maximum employment and returning inflation to its 2 percent objective.\n\nIn assessing the appropriate stance of monetary policy, the Committee will continue to monitor the implications of incoming information for the economic outlook. The Committee would be prepared to adjust the stance of monetary policy as appropriate if risks emerge that could impede the attainment of the Committee's goals. The Committee's assessments will take into account a wide range of information, including readings on labor market conditions, inflation pressures and inflation expectations, and financial and international developments.\n\nVoting for the monetary policy action were Jerome H. Powell, Chair; John C. Williams, Vice Chair; Michael S. Barr; Michelle W. Bowman; Lisa D. Cook; Beth M. Hammack; Philip N. Jefferson; Neel Kashkari; Lorie K. Logan; and Anna Paulson. Voting against this action were Stephen I. Miran and Christopher J. Waller, who preferred to lower the target range for the federal funds rate by 1/4 percentage point at this meeting."
   },
   {
-    date: "March 18, 2026",
-    isoDate: "2026-03-18",
-    url: "https://www.federalreserve.gov/newsevents/pressreleases/monetary20260318a.htm",
-    text: `Available indicators suggest that economic activity has been expanding at a solid pace. Job gains have remained low, and the unemployment rate has been little changed in recent months. Inflation remains somewhat elevated.
-
-The Committee seeks to achieve maximum employment and inflation at the rate of 2 percent over the longer run. Uncertainty about the economic outlook remains elevated. The implications of developments in the Middle East for the U.S. economy are uncertain. The Committee is attentive to the risks to both sides of its dual mandate.
-
-In support of its goals, the Committee decided to maintain the target range for the federal funds rate at 3-1/2 to 3-3/4 percent. In considering the extent and timing of additional adjustments to the target range for the federal funds rate, the Committee will carefully assess incoming data, the evolving outlook, and the balance of risks. The Committee is strongly committed to supporting maximum employment and returning inflation to its 2 percent objective.
-
-In assessing the appropriate stance of monetary policy, the Committee will continue to monitor the implications of incoming information for the economic outlook. The Committee would be prepared to adjust the stance of monetary policy as appropriate if risks emerge that could impede the attainment of the Committee's goals. The Committee's assessments will take into account a wide range of information, including readings on labor market conditions, inflation pressures and inflation expectations, and financial and international developments.
-
-Voting for the monetary policy action were Jerome H. Powell, Chair; John C. Williams, Vice Chair; Michael S. Barr; Michelle W. Bowman; Lisa D. Cook; Beth M. Hammack; Philip N. Jefferson; Neel Kashkari; Lorie K. Logan; Anna Paulson; and Christopher J. Waller. Voting against this action was Stephen I. Miran, who preferred to lower the target range for the federal funds rate by 1/4 percentage point at this meeting.`
+    "date": "March 18, 2026",
+    "isoDate": "2026-03-18",
+    "url": "https://www.federalreserve.gov/newsevents/pressreleases/monetary20260318a.htm",
+    "text": "Available indicators suggest that economic activity has been expanding at a solid pace. Job gains have remained low, and the unemployment rate has been little changed in recent months. Inflation remains somewhat elevated.\n\nThe Committee seeks to achieve maximum employment and inflation at the rate of 2 percent over the longer run. Uncertainty about the economic outlook remains elevated. The implications of developments in the Middle East for the U.S. economy are uncertain. The Committee is attentive to the risks to both sides of its dual mandate.\n\nIn support of its goals, the Committee decided to maintain the target range for the federal funds rate at 3-1/2 to 3\u20113/4 percent. In considering the extent and timing of additional adjustments to the target range for the federal funds rate, the Committee will carefully assess incoming data, the evolving outlook, and the balance of risks. The Committee is strongly committed to supporting maximum employment and returning inflation to its 2 percent objective.\n\nIn assessing the appropriate stance of monetary policy, the Committee will continue to monitor the implications of incoming information for the economic outlook. The Committee would be prepared to adjust the stance of monetary policy as appropriate if risks emerge that could impede the attainment of the Committee's goals. The Committee's assessments will take into account a wide range of information, including readings on labor market conditions, inflation pressures and inflation expectations, and financial and international developments.\n\nVoting for the monetary policy action were Jerome H. Powell, Chair; John C. Williams, Vice Chair; Michael S. Barr; Michelle W. Bowman; Lisa D. Cook; Beth M. Hammack; Philip N. Jefferson; Neel Kashkari; Lorie K. Logan; Anna Paulson; and Christopher J. Waller. Voting against this action was Stephen I. Miran, who preferred to lower the target range for the federal funds rate by 1/4 percentage point at this meeting."
   }
-];
+]
+  </script>
 
-// Statement release dates for upcoming meetings (YYYY-MM-DD, second day of each meeting).
-// Past dates are ignored automatically. Update once per year when the Fed publishes its schedule.
+<script>
+// Upcoming meeting statement release dates (2nd day of each meeting, YYYY-MM-DD).
+// Update once per year when the Fed publishes its annual schedule.
 // Source: federalreserve.gov/monetarypolicy/fomccalendars.htm
 const UPCOMING = [
   "2026-04-29",
@@ -440,9 +379,10 @@ const UPCOMING = [
   "2027-01-27"
 ];
 
-/* ================================================================
-   APPLICATION CODE — no need to edit below this line
-   ================================================================ */
+// Load statement data from the JSON block above
+const STATEMENTS = JSON.parse(document.getElementById('stmt-data').textContent);
+
+// ── Core diff functions ──────────────────────────────────────────
 
 function splitStatement(text) {
   const marker = 'Voting for the monetary policy action';
@@ -494,9 +434,9 @@ function opsToHtml(ops, insClass, delClass) {
       continue;
     }
     const s = sp ? ' ' : '', v = esc(o.v);
-    if (o.t === 0)       html += s + v;
-    else if (o.t === 1)  html += s + `<mark class="${insClass}">${v}</mark>`;
-    else                 html += s + `<mark class="${delClass}">${v}</mark>`;
+    if (o.t === 0)      html += s + v;
+    else if (o.t === 1) html += s + `<mark class="${insClass}">${v}</mark>`;
+    else                html += s + `<mark class="${delClass}">${v}</mark>`;
     sp = true;
   }
   return html + '</p>';
@@ -506,35 +446,7 @@ function plainHtml(text) {
   return text.split('\n\n').map(p => `<p>${esc(p)}</p>`).join('');
 }
 
-function updateCountdown() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const next = UPCOMING
-    .map(d => new Date(d + 'T12:00:00'))
-    .find(d => d >= today);
-  const el = document.getElementById('countdown');
-  if (!next) { el.style.display = 'none'; return; }
-  const days = Math.round((next - today) / 86400000);
-  const label = next.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-  if (days === 0)      el.textContent = `Next FOMC meeting: today — ${label}`;
-  else if (days === 1) el.textContent = `Next FOMC meeting: tomorrow — ${label}`;
-  else                 el.textContent = `Next FOMC meeting in ${days} days — ${label}`;
-}
-
-function buildTimeline() {
-  const slider = document.getElementById('slider');
-  const labelsEl = document.getElementById('timeline-labels');
-  const n = STATEMENTS.length;
-  slider.max = n - 1;
-  slider.value = n - 1; // default to most recent
-
-  labelsEl.innerHTML = STATEMENTS.map(s => {
-    const parts = s.date.split(' ');
-    return `<span>${parts[0].slice(0,3)} ${parts[2]}</span>`;
-  }).join('');
-
-  slider.addEventListener('input', () => render(parseInt(slider.value)));
-}
+// ── Render ───────────────────────────────────────────────────────
 
 function render(idx) {
   const stmt = STATEMENTS[idx];
@@ -557,8 +469,8 @@ function render(idx) {
 
   const prev = STATEMENTS[idx - 1];
   const { policy: prevPolicy, voting: prevVoting } = splitStatement(prev.text);
-
   const norm = s => s.replace(/\s+/g, ' ').trim();
+
   if (norm(policy) === norm(prevPolicy)) {
     document.getElementById('stmt-comparison').textContent =
       `No policy changes from ${prev.date}`;
@@ -574,16 +486,49 @@ function render(idx) {
     document.getElementById('stmt-body').innerHTML = opsToHtml(ops, 'ins', 'del');
   }
 
-  // Voting section diff (muted styling)
   if (voting && prevVoting) {
     const vOps = computeDiff(tokenize(prevVoting), tokenize(voting));
     document.getElementById('voting-body').innerHTML = opsToHtml(vOps, 'vote-ins', 'vote-del');
-  } else if (voting) {
-    document.getElementById('voting-body').innerHTML = `<p>${esc(voting)}</p>`;
   } else {
-    document.getElementById('voting-body').innerHTML = '';
+    document.getElementById('voting-body').innerHTML = voting ? `<p>${esc(voting)}</p>` : '';
   }
 }
+
+// ── Countdown ────────────────────────────────────────────────────
+
+function updateCountdown() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const next = UPCOMING
+    .map(d => new Date(d + 'T12:00:00'))
+    .find(d => d >= today);
+  const el = document.getElementById('countdown');
+  if (!next) { el.style.display = 'none'; return; }
+  const days = Math.round((next - today) / 86400000);
+  const label = next.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  if (days === 0)      el.textContent = `Next FOMC meeting: today — ${label}`;
+  else if (days === 1) el.textContent = `Next FOMC meeting: tomorrow — ${label}`;
+  else                 el.textContent = `Next FOMC meeting in ${days} days — ${label}`;
+}
+
+// ── Timeline ─────────────────────────────────────────────────────
+
+function buildTimeline() {
+  const slider = document.getElementById('slider');
+  const labelsEl = document.getElementById('timeline-labels');
+  const n = STATEMENTS.length;
+  slider.max = n - 1;
+  slider.value = n - 1; // default to most recent
+
+  labelsEl.innerHTML = STATEMENTS.map(s => {
+    const parts = s.date.split(' ');
+    return `<span>${parts[0].slice(0, 3)} ${parts[2]}</span>`;
+  }).join('');
+
+  slider.addEventListener('input', () => render(parseInt(slider.value)));
+}
+
+// ── Copy link ────────────────────────────────────────────────────
 
 function copyLink() {
   const btn = document.getElementById('copy-btn');
@@ -591,12 +536,13 @@ function copyLink() {
     btn.textContent = 'Copied!';
     setTimeout(() => { btn.textContent = 'Copy page link'; }, 2000);
   }).catch(() => {
-    btn.textContent = 'Copy failed';
+    btn.textContent = 'Copy failed — try manually';
     setTimeout(() => { btn.textContent = 'Copy page link'; }, 2000);
   });
 }
 
-// Initialize
+// ── Init ─────────────────────────────────────────────────────────
+
 updateCountdown();
 buildTimeline();
 render(STATEMENTS.length - 1);
