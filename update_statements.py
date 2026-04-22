@@ -19,6 +19,7 @@ import json
 import re
 import sys
 import time
+import unicodedata
 from datetime import date, datetime
 
 import requests
@@ -38,6 +39,31 @@ REQUEST_TIMEOUT = 30
 REQUEST_DELAY   = 3  # seconds between requests
 
 
+def clean_text(text):
+    """
+    Normalize Unicode characters that the Fed uses in its statements.
+
+    The Fed uses non-breaking hyphens (\u2011) in rate ranges like
+    "3-1/2 to 3-3/4" and en-dashes in words like "mortgage-backed".
+    When requests mis-detects page encoding these appear as "â" artifacts.
+    We force UTF-8 decoding at the requests level, then normalize here.
+    """
+    # NFKC normalization handles compatibility characters (e.g. fractions)
+    text = unicodedata.normalize("NFKC", text)
+    # Non-breaking hyphen → regular hyphen
+    text = text.replace("\u2011", "-")
+    # En-dash used as hyphen in compound words → regular hyphen
+    text = text.replace("\u2013", "-")
+    # Em-dash → space-dash-space
+    text = text.replace("\u2014", " - ")
+    # Catch any remaining â-artifacts from Latin-1 mis-decoding of \u2011
+    text = re.sub(r"â\u0080\u0091", "-", text)
+    text = re.sub(r"â[\x80-\xbf][\x80-\xbf]", "-", text)
+    # Collapse multiple spaces
+    text = re.sub(r"  +", " ", text)
+    return text.strip()
+
+
 # ── Text extraction ───────────────────────────────────────────────────────────
 
 def extract_statement_text(url):
@@ -55,6 +81,10 @@ def extract_statement_text(url):
     try:
         resp = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
+        # Force UTF-8 — the Fed serves UTF-8 but occasionally omits the
+        # charset header, causing requests to fall back to Latin-1 which
+        # corrupts non-breaking hyphens and en-dashes into â artifacts.
+        resp.encoding = "utf-8"
     except requests.RequestException as e:
         print("  Error: %s" % e)
         return None
@@ -78,7 +108,7 @@ def extract_statement_text(url):
             if c.strip() and c.strip().lower() not in SKIP and len(c.strip()) > 30
         ]
         if paragraphs:
-            return "\n\n".join(paragraphs)
+            return clean_text("\n\n".join(paragraphs))
 
     # ── Strategy 2: paragraph tag harvest ────────────────────────────────────
     # Collect <p> elements that look like statement prose.
@@ -105,7 +135,7 @@ def extract_statement_text(url):
             paragraphs.append(p)
 
     if paragraphs:
-        return "\n\n".join(paragraphs)
+        return clean_text("\n\n".join(paragraphs))
 
     # ── Both strategies failed — print diagnostic ─────────────────────────────
     print("  WARNING: could not extract text. First 600 chars of page:")
