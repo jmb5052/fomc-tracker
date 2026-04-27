@@ -24,9 +24,9 @@
       --vote-removed-bg: #fff1f2;
       --vote-removed-text: #be123c;
     }
-
+ 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
+ 
     body {
       font-family: var(--sans);
       color: var(--text);
@@ -36,26 +36,26 @@
       margin: 0 auto;
       padding: 2rem 1.5rem 3rem;
     }
-
+ 
     .site-header {
       border-bottom: 2px solid var(--navy);
       padding-bottom: 1rem;
       margin-bottom: 1.5rem;
     }
-
+ 
     .site-title {
       font-size: 1.5rem;
       font-weight: 600;
       color: var(--navy);
       letter-spacing: -0.02em;
     }
-
+ 
     .site-subtitle {
       font-size: 0.875rem;
       color: var(--muted);
       margin-top: 3px;
     }
-
+ 
     .countdown {
       display: inline-flex;
       align-items: center;
@@ -67,7 +67,7 @@
       border-radius: 20px;
       margin-top: 10px;
     }
-
+ 
     details {
       background: var(--bg-subtle);
       border: 1px solid var(--border);
@@ -77,7 +77,7 @@
       font-size: 0.875rem;
       color: var(--muted);
     }
-
+ 
     details summary {
       cursor: pointer;
       font-weight: 500;
@@ -85,33 +85,33 @@
       list-style: none;
       user-select: none;
     }
-
+ 
     details summary::-webkit-details-marker { display: none; }
     details summary::before { content: '▸  '; font-size: 0.7rem; }
     details[open] summary::before { content: '▾  '; }
     details p { margin-top: 0.75rem; line-height: 1.75; }
-
+ 
     .stmt-meta { margin-bottom: 1rem; }
-
+ 
     .stmt-date {
       font-size: 1.375rem;
       font-weight: 600;
     }
-
+ 
     .stmt-comparison {
       font-size: 0.875rem;
       color: var(--muted);
       margin-top: 3px;
     }
-
+ 
     .stmt-source {
       font-size: 0.8rem;
       margin-top: 4px;
     }
-
+ 
     .stmt-source a { color: var(--navy); text-decoration: none; }
     .stmt-source a:hover { text-decoration: underline; }
-
+ 
     .legend {
       display: flex;
       gap: 1rem;
@@ -121,7 +121,7 @@
       font-size: 0.8rem;
       color: var(--muted);
     }
-
+ 
     .chip { padding: 1px 8px; border-radius: 3px; font-size: 0.8rem; }
     .chip-added { background: var(--added-bg); color: var(--added-text); }
     .chip-removed {
@@ -129,7 +129,7 @@
       color: var(--removed-text);
       text-decoration: line-through;
     }
-
+ 
     .no-changes {
       background: #f0f9ff;
       border: 1px solid #bae6fd;
@@ -140,7 +140,7 @@
       margin-bottom: 1rem;
       display: none;
     }
-
+ 
     .stmt-body {
       font-family: var(--serif);
       font-size: 1rem;
@@ -148,17 +148,17 @@
       border-top: 1px solid var(--border);
       padding-top: 1.25rem;
     }
-
+ 
     .stmt-body p { margin-bottom: 1em; }
     .stmt-body p:last-child { margin-bottom: 0; }
-
+ 
     mark.ins {
       background: var(--added-bg);
       color: var(--added-text);
       border-radius: 2px;
       padding: 0 1px;
     }
-
+ 
     mark.del {
       background: var(--removed-bg);
       color: var(--removed-text);
@@ -166,14 +166,14 @@
       padding: 0 1px;
       text-decoration: line-through;
     }
-
+ 
     .voting-section {
       border-top: 1px solid var(--border);
       padding-top: 0.875rem;
       margin-top: 1.25rem;
       margin-bottom: 1.5rem;
     }
-
+ 
     .voting-label {
       font-size: 0.7rem;
       font-weight: 600;
@@ -182,24 +182,24 @@
       color: var(--muted);
       margin-bottom: 0.5rem;
     }
-
+ 
     .voting-body {
       font-family: var(--serif);
       font-size: 0.875rem;
       line-height: 1.75;
       color: var(--muted);
     }
-
+ 
     .voting-body p { margin-bottom: 0.75em; }
     .voting-body p:last-child { margin-bottom: 0; }
-
+ 
     mark.vote-ins {
       background: var(--vote-added-bg);
       color: var(--vote-added-text);
       border-radius: 2px;
       padding: 0 1px;
     }
-
+ 
     mark.vote-del {
       background: var(--vote-removed-bg);
       color: var(--vote-removed-text);
@@ -207,22 +207,22 @@
       padding: 0 1px;
       text-decoration: line-through;
     }
-
+ 
     .timeline-section {
       border-bottom: 1px solid var(--border);
       padding-bottom: 1.25rem;
       margin-bottom: 1.5rem;
     }
-
+ 
     /* Removed floating styles - slider is now always at the top */
-
+ 
     /* Wrapper holds bubble + slider + labels in relative space */
     .timeline-wrapper {
       position: relative;
       padding-top: 2rem;   /* room for bubble above slider */
       user-select: none;
     }
-
+ 
     /* Floating date bubble above thumb */
     .timeline-bubble {
       position: absolute;
@@ -239,7 +239,7 @@
       letter-spacing: 0.01em;
       transition: left 0.04s linear;
     }
-
+ 
     /* Downward caret on bubble */
     .timeline-bubble::after {
       content: '';
@@ -250,7 +250,7 @@
       border: 5px solid transparent;
       border-top-color: var(--navy);
     }
-
+ 
     #slider {
       width: 100%;
       accent-color: var(--navy);
@@ -258,14 +258,14 @@
       margin: 0;
       display: block;
     }
-
+ 
     /* Year marker row — always visible */
     .timeline-years {
       position: relative;
       height: 20px;
       margin-top: 6px;
     }
-
+ 
     .year-label {
       position: absolute;
       transform: translateX(-50%);
@@ -274,7 +274,7 @@
       color: var(--navy);
       top: 4px;
     }
-
+ 
     .year-tick {
       position: absolute;
       transform: translateX(-50%);
@@ -283,14 +283,14 @@
       background: var(--border);
       top: 0;
     }
-
+ 
     /* Month label row — fades in on slow movement */
     .timeline-months {
       position: relative;
       height: 18px;
       margin-top: 1px;
     }
-
+ 
     .month-label {
       position: absolute;
       transform: translateX(-50%);
@@ -302,16 +302,16 @@
       transition: opacity 0.25s ease;
       pointer-events: none;
     }
-
+ 
     .month-label.visible { opacity: 1; }
-
+ 
     .timeline-hint {
       text-align: center;
       font-size: 0.72rem;
       color: #9ca3af;
       margin-top: 4px;
     }
-
+ 
     .page-footer {
       margin-top: 2rem;
       padding-top: 1rem;
@@ -322,7 +322,7 @@
       gap: 8px;
       flex-wrap: wrap;
     }
-
+ 
     .copy-btn {
       background: none;
       border: 1px solid var(--border);
@@ -333,12 +333,12 @@
       color: var(--muted);
       font-family: var(--sans);
     }
-
+ 
     .copy-btn:hover { background: var(--bg-subtle); }
-
+ 
     .fomc-link { font-size: 0.8rem; color: var(--navy); text-decoration: none; }
     .fomc-link:hover { text-decoration: underline; }
-
+ 
     @media (max-width: 500px) {
       body { padding: 1.25rem 1rem 2rem; }
       .site-title { font-size: 1.25rem; }
@@ -348,13 +348,13 @@
   </style>
 </head>
 <body>
-
+ 
   <header class="site-header">
     <div class="site-title">FOMC Statement Tracker</div>
     <div class="site-subtitle">Word-by-word changes between Federal Reserve policy statements</div>
     <div class="countdown" id="countdown"></div>
   </header>
-
+ 
   <details>
     <summary>How to use this tracker</summary>
     <p>
@@ -366,7 +366,7 @@
       The earliest statement in the series is the baseline and shows no comparison.
     </p>
   </details>
-
+ 
   <div class="timeline-section">
     <div class="timeline-wrapper">
       <div class="timeline-bubble" id="timeline-bubble"></div>
@@ -376,43 +376,43 @@
     </div>
     <div class="timeline-hint">← drag to compare meetings →</div>
   </div>
-
+ 
   <div class="stmt-meta">
     <div class="stmt-date" id="stmt-date"></div>
     <div class="stmt-comparison" id="stmt-comparison"></div>
     <div class="stmt-source" id="stmt-source"></div>
   </div>
-
+ 
   <div class="legend">
     <span class="chip chip-added">added</span>
     <span class="chip chip-removed">removed</span>
     <span>compared to previous meeting</span>
   </div>
-
+ 
   <div class="no-changes" id="no-changes-banner">
     No changes to policy language from the previous statement.
   </div>
-
+ 
   <div class="stmt-body" id="stmt-body"></div>
-
+ 
   <div class="voting-section">
     <div class="voting-label">Committee vote</div>
     <div class="voting-body" id="voting-body"></div>
   </div>
-
+ 
   <footer class="page-footer">
     <button class="copy-btn" id="copy-btn" onclick="copyLink()">Copy page link</button>
     <a class="fomc-link"
        href="https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm"
        target="_blank">FOMC meeting calendar ↗</a>
   </footer>
-
+ 
   <!--
   ============================================================
   STATEMENT DATA
   This block is read and updated automatically by the GitHub
   Action (update_statements.py). You can also edit it manually.
-
+ 
   To add a statement manually:
     1. Open this file in GitHub and click the pencil icon
     2. Add a new JSON object at the END of the array below
@@ -442,7 +442,7 @@
   }
 ]
   </script>
-
+ 
 <script>
 // Upcoming meeting statement release dates (2nd day of each meeting, YYYY-MM-DD).
 // Update once per year when the Fed publishes its annual schedule.
@@ -456,19 +456,19 @@ const UPCOMING = [
   "2026-12-09",
   "2027-01-27"
 ];
-
+ 
 // Load statement data from the JSON block above
 const STATEMENTS = JSON.parse(document.getElementById('stmt-data').textContent);
-
+ 
 // ── Core diff functions ──────────────────────────────────────────
-
+ 
 function splitStatement(text) {
   const marker = 'Voting for the monetary policy action';
   const idx = text.indexOf(marker);
   if (idx === -1) return { policy: text.trim(), voting: '' };
   return { policy: text.slice(0, idx).trim(), voting: text.slice(idx).trim() };
 }
-
+ 
 function tokenize(text) {
   const tokens = [];
   text.split('\n\n').forEach((para, i, arr) => {
@@ -477,7 +477,7 @@ function tokenize(text) {
   });
   return tokens;
 }
-
+ 
 function computeDiff(a, b) {
   const m = a.length, n = b.length;
   const dp = Array.from({ length: m + 1 }, () => new Int32Array(n + 1));
@@ -499,11 +499,11 @@ function computeDiff(a, b) {
   }
   return ops;
 }
-
+ 
 function esc(s) {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
-
+ 
 function opsToHtml(ops, insClass, delClass) {
   let html = '<p>', sp = false;
   for (const o of ops) {
@@ -519,23 +519,23 @@ function opsToHtml(ops, insClass, delClass) {
   }
   return html + '</p>';
 }
-
+ 
 function plainHtml(text) {
   return text.split('\n\n').map(p => `<p>${esc(p)}</p>`).join('');
 }
-
+ 
 // ── Render ───────────────────────────────────────────────────────
-
+ 
 function render(idx) {
   const stmt = STATEMENTS[idx];
   const { policy, voting } = splitStatement(stmt.text);
-
+ 
   document.getElementById('stmt-date').textContent = stmt.date;
   document.getElementById('stmt-source').innerHTML =
     `<a href="${stmt.url}" target="_blank">View source statement on federalreserve.gov ↗</a>`;
-
+ 
   const banner = document.getElementById('no-changes-banner');
-
+ 
   if (idx === 0) {
     document.getElementById('stmt-comparison').textContent =
       'Baseline — earliest statement in this tracker';
@@ -544,11 +544,11 @@ function render(idx) {
     document.getElementById('voting-body').innerHTML = voting ? `<p>${esc(voting)}</p>` : '';
     return;
   }
-
+ 
   const prev = STATEMENTS[idx - 1];
   const { policy: prevPolicy, voting: prevVoting } = splitStatement(prev.text);
   const norm = s => s.replace(/\s+/g, ' ').trim();
-
+ 
   if (norm(policy) === norm(prevPolicy)) {
     document.getElementById('stmt-comparison').textContent =
       `No policy changes from ${prev.date}`;
@@ -563,7 +563,7 @@ function render(idx) {
       `vs. ${prev.date}: +${ins} word${ins !== 1 ? 's' : ''} added, ${del} removed`;
     document.getElementById('stmt-body').innerHTML = opsToHtml(ops, 'ins', 'del');
   }
-
+ 
   if (voting && prevVoting) {
     const vOps = computeDiff(tokenize(prevVoting), tokenize(voting));
     document.getElementById('voting-body').innerHTML = opsToHtml(vOps, 'vote-ins', 'vote-del');
@@ -571,9 +571,9 @@ function render(idx) {
     document.getElementById('voting-body').innerHTML = voting ? `<p>${esc(voting)}</p>` : '';
   }
 }
-
+ 
 // ── Countdown ────────────────────────────────────────────────────
-
+ 
 function updateCountdown() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -588,55 +588,55 @@ function updateCountdown() {
   else if (days === 1) el.textContent = `Next FOMC meeting: tomorrow — ${label}`;
   else                 el.textContent = `Next FOMC meeting in ${days} days — ${label}`;
 }
-
+ 
 // ── Timeline ─────────────────────────────────────────────────────
-
+ 
 function buildTimeline() {
   const slider    = document.getElementById('slider');
   const bubble    = document.getElementById('timeline-bubble');
   const yearsEl   = document.getElementById('timeline-years');
   const monthsEl  = document.getElementById('timeline-months');
   const n         = STATEMENTS.length;
-
+ 
   slider.max   = n - 1;
   slider.value = n - 1; // default to most recent
-
+ 
   // Convert a statement index to a 0–1 fraction of the slider track.
   // Accounts for thumb radius so labels line up with the thumb centre.
   function idxToFrac(idx) {
     return idx / (n - 1);
   }
-
+ 
   // Convert fraction to pixel offset inside the slider element.
   function fracToPx(frac) {
     const thumbR = 8; // half of browser default thumb (~16px)
     return thumbR + frac * (slider.offsetWidth - thumbR * 2);
   }
-
+ 
   // ── Build fixed year markers ──────────────────────────────────
   const years = [...new Set(STATEMENTS.map(s => s.isoDate.slice(0, 4)))];
-
+ 
   years.forEach(yr => {
     // Position at the first statement of that year
     const firstIdx = STATEMENTS.findIndex(s => s.isoDate.startsWith(yr));
     const pct = idxToFrac(firstIdx) * 100;
-
+ 
     const tick = document.createElement('div');
     tick.className = 'year-tick';
     tick.style.left = pct + '%';
     yearsEl.appendChild(tick);
-
+ 
     const lbl = document.createElement('div');
     lbl.className = 'year-label';
     lbl.style.left = pct + '%';
     lbl.textContent = yr;
     yearsEl.appendChild(lbl);
   });
-
+ 
   // ── Build month labels (hidden initially) ────────────────────
   const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun',
                        'Jul','Aug','Sep','Oct','Nov','Dec'];
-
+ 
   STATEMENTS.forEach((s, idx) => {
     const [yr, mo] = s.isoDate.split('-');
     const lbl = document.createElement('div');
@@ -647,9 +647,9 @@ function buildTimeline() {
     lbl.textContent = MONTH_SHORT[parseInt(mo, 10) - 1];
     monthsEl.appendChild(lbl);
   });
-
+ 
   const allMonthLabels = monthsEl.querySelectorAll('.month-label');
-
+ 
   // ── Bubble positioning ────────────────────────────────────────
   function updateBubble(idx) {
     const s = STATEMENTS[idx];
@@ -659,42 +659,42 @@ function buildTimeline() {
     const px = fracToPx(idxToFrac(idx));
     bubble.style.left = px + 'px';
   }
-
+ 
   // ── Velocity-based month label reveal ────────────────────────
   let lastTime = 0;
   let lastIdx  = n - 1;
   let hideTimer = null;
   let monthsVisible = false;
-
+ 
   function showMonthsForYear(yr) {
     allMonthLabels.forEach(el => {
       el.classList.toggle('visible', el.dataset.year === yr);
     });
     monthsVisible = true;
   }
-
+ 
   function hideMonths() {
     allMonthLabels.forEach(el => el.classList.remove('visible'));
     monthsVisible = false;
   }
-
+ 
   function scheduleHide() {
     clearTimeout(hideTimer);
     hideTimer = setTimeout(hideMonths, 1400);
   }
-
+ 
   slider.addEventListener('input', () => {
     const now = performance.now();
     const idx = parseInt(slider.value);
     const dt  = now - lastTime;
     const di  = Math.abs(idx - lastIdx);
-
+ 
     // velocity in indices per millisecond
     const velocity = dt > 0 ? di / dt : Infinity;
-
+ 
     updateBubble(idx);
     render(idx);
-
+ 
     // Show month labels when dragging slowly (< 0.06 idx/ms)
     if (velocity < 0.06) {
       const yr = STATEMENTS[idx].isoDate.slice(0, 4);
@@ -705,11 +705,11 @@ function buildTimeline() {
       hideMonths();
       clearTimeout(hideTimer);
     }
-
+ 
     lastTime = now;
     lastIdx  = idx;
   });
-
+ 
   // Also show months briefly on mousedown/touchstart (tap to reveal)
   slider.addEventListener('mousedown', () => {
     const yr = STATEMENTS[parseInt(slider.value)].isoDate.slice(0, 4);
@@ -721,7 +721,7 @@ function buildTimeline() {
     showMonthsForYear(yr);
     scheduleHide();
   }, { passive: true });
-
+ 
   // Initial bubble position (no transition on first paint)
   bubble.style.transition = 'none';
   updateBubble(n - 1);
@@ -729,9 +729,9 @@ function buildTimeline() {
     bubble.style.transition = '';
   });
 }
-
+ 
 // ── Copy link ────────────────────────────────────────────────────
-
+ 
 function copyLink() {
   const btn = document.getElementById('copy-btn');
   navigator.clipboard.writeText(window.location.href).then(() => {
@@ -742,34 +742,34 @@ function copyLink() {
     setTimeout(() => { btn.textContent = 'Copy page link'; }, 2000);
   });
 }
-
+ 
 // ── Init ─────────────────────────────────────────────────────────
-
+ 
 updateCountdown();
 buildTimeline();
 render(STATEMENTS.length - 1);
-
+ 
 // ── iframe height reporting ───────────────────────────────────────
 // When embedded in an iframe, post our full document height to the
 // parent so it can resize the iframe and eliminate the inner scrollbar.
-
+ 
 function reportHeight() {
   const h = document.documentElement.scrollHeight;
   if (window.parent !== window) {
     window.parent.postMessage({ type: 'fomc-height', height: h }, '*');
   }
 }
-
+ 
 // Report after initial render and after every slider change
 reportHeight();
 document.getElementById('slider').addEventListener('input', () => {
   // Small delay to let DOM update finish before measuring
   setTimeout(reportHeight, 50);
 });
-
+ 
 // Also report if fonts/images cause layout shifts after load
 window.addEventListener('load', reportHeight);
 </script>
-
+ 
 </body>
-</html> 
+</html>
