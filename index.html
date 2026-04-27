@@ -1090,6 +1090,27 @@ function copyLink() {
 updateCountdown();
 buildTimeline();
 render(STATEMENTS.length - 1);
+  
+// ── iframe height reporting ───────────────────────────────────────
+// When embedded in an iframe, post our full document height to the
+// parent so it can resize the iframe and eliminate the inner scrollbar.
+ 
+function reportHeight() {
+  const h = document.documentElement.scrollHeight;
+  if (window.parent !== window) {
+    window.parent.postMessage({ type: 'fomc-height', height: h }, '*');
+  }
+}
+ 
+// Report after initial render and after every slider change
+reportHeight();
+document.getElementById('slider').addEventListener('input', () => {
+  // Small delay to let DOM update finish before measuring
+  setTimeout(reportHeight, 50);
+});
+ 
+// Also report if fonts/images cause layout shifts after load
+window.addEventListener('load', reportHeight);
 </script>
  
 </body>
