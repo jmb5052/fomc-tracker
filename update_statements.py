@@ -1,17 +1,29 @@
 """
 update_statements.py
 ====================
-Checks the Federal Reserve website for new FOMC policy statements
-and adds them to index.html automatically.
+Fetches FOMC policy statements from federalreserve.gov and maintains
+both statements.json (canonical backup) and index.html (web display).
 
-Normal mode (run by daily GitHub Action):
+USAGE:
+  Normal (daily GitHub Action):
     python update_statements.py
 
-Backfill mode (run once to populate history):
-    python update_statements.py --backfill 2020-01-01
+  Backfill (run once to populate history):
+    python update_statements.py --backfill 2006-01-01
 
-Dependencies: requests, beautifulsoup4
-Install:       pip install requests beautifulsoup4
+  Sync only (rebuild index.html from statements.json, no fetching):
+    python update_statements.py --sync
+
+PARSER NOTES:
+  The Fed has used three release line formats over the years:
+    Modern (2012+):  "For release at 2:00 p.m. EDT"
+    Older (pre-2012): "For immediate release"
+  End anchors:
+    Modern:  "For media inquiries"
+    Older:   "Last Update:"
+  The paragraph fallback covers edge cases using known opening phrases.
+
+DEPENDENCIES: requests, beautifulsoup4
 """
 
 import argparse
@@ -21,11 +33,11 @@ import sys
 import time
 import unicodedata
 from datetime import date, datetime
+from pathlib import Path
 
 import requests
 from bs4 import BeautifulSoup
 
-# Realistic browser UA — the Fed's server rejects obvious bot agents
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -36,54 +48,63 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9",
 }
 REQUEST_TIMEOUT = 30
-REQUEST_DELAY   = 3  # seconds between requests
+REQUEST_DELAY   = 3
 
+JSON_FILE  = Path("statements.json")
+HTML_FILE  = Path("index.html")
+
+
+# ── Text cleaning ─────────────────────────────────────────────────────────────
 
 def clean_text(text):
-    """
-    Normalize Unicode characters that the Fed uses in its statements.
-
-    The Fed uses non-breaking hyphens (\u2011) in rate ranges like
-    "3-1/2 to 3-3/4" and en-dashes in words like "mortgage-backed".
-    When requests mis-detects page encoding these appear as "â" artifacts.
-    We force UTF-8 decoding at the requests level, then normalize here.
-    """
-    # NFKC normalization handles compatibility characters (e.g. fractions)
+    """Normalize Unicode and fix common encoding artifacts from Fed pages."""
     text = unicodedata.normalize("NFKC", text)
-    # Non-breaking hyphen → regular hyphen
-    text = text.replace("\u2011", "-")
-    # En-dash used as hyphen in compound words → regular hyphen
-    text = text.replace("\u2013", "-")
-    # Em-dash → space-dash-space
-    text = text.replace("\u2014", " - ")
-    # Catch any remaining â-artifacts from Latin-1 mis-decoding of \u2011
-    text = re.sub(r"â\u0080\u0091", "-", text)
-    text = re.sub(r"â[\x80-\xbf][\x80-\xbf]", "-", text)
-    # Collapse multiple spaces
+    text = text.replace("\u2011", "-")   # non-breaking hyphen
+    text = text.replace("\u2013", "-")   # en-dash used as hyphen
+    text = text.replace("\u2014", " - ") # em-dash
+    text = re.sub(r"â[\x80-\xbf][\x80-\xbf]", "-", text)  # mojibake
+    text = re.sub(r"\[\d+\]", "", text)  # strip footnote references like [1]
     text = re.sub(r"  +", " ", text)
     return text.strip()
 
 
-# ── Text extraction ───────────────────────────────────────────────────────────
+# ── Statement extraction ──────────────────────────────────────────────────────
+
+# Opening phrases used across all statement eras (1994–present)
+OPEN_RE = re.compile(
+    r"^(Available indicators|Recent indicators|Economic activity|"
+    r"The Federal Reserve is committed|The Committee seeks|"
+    r"Information received since|Job gains|Labor market conditions|"
+    r"The labor market|Consistent with its statutory|"
+    r"The Committee decided|In light of|"
+    r"The pace of recovery|The pace of economic)",
+    re.IGNORECASE,
+)
+
+STOP_RE = re.compile(
+    r"For media inquiries|Last Update:|Implementation Note|"
+    r"Return to text|footnote \d",
+    re.IGNORECASE,
+)
+
 
 def extract_statement_text(url):
     """
     Fetch a statement page and extract policy text.
 
-    Strategy 1 (preferred): anchor on 'For release at' ... 'For media inquiries'
-    Strategy 2 (fallback):  collect all <p> tags with 20+ words that look like
-                            policy prose, stopping before the media contact line.
+    Strategy 1 — anchor-based:
+      Start: "For release at X:XX" (modern) or "For immediate release" (pre-2012)
+      End:   "For media inquiries" (modern) or "Last Update:" (pre-2012)
 
-    Prints a diagnostic snippet if both strategies fail so future parse errors
-    are easy to debug.
+    Strategy 2 — paragraph harvest:
+      Collect <p> tags matching known opening phrases until a stop phrase.
+
+    Returns None if both strategies fail; prints diagnostics to aid debugging.
     """
     print("  Fetching %s ..." % url)
     try:
         resp = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
-        # Force UTF-8 — the Fed serves UTF-8 but occasionally omits the
-        # charset header, causing requests to fall back to Latin-1 which
-        # corrupts non-breaking hyphens and en-dashes into â artifacts.
         resp.encoding = "utf-8"
     except requests.RequestException as e:
         print("  Error: %s" % e)
@@ -93,14 +114,17 @@ def extract_statement_text(url):
     for tag in soup(["nav", "header", "footer", "script", "style", "aside"]):
         tag.decompose()
 
-    # ── Strategy 1: anchor-based ──────────────────────────────────────────────
     full_text = soup.get_text("\n\n", strip=True)
 
-    release_m = re.search(r"For release at \d+:\d+ [ap]\.m\.", full_text, re.IGNORECASE)
-    media_m   = re.search(r"For media inquiries", full_text)
+    # ── Strategy 1: anchor-based ──────────────────────────────────────────────
+    release_m = re.search(
+        r"For release at \d+:\d+ [ap]\.m\.|For immediate release",
+        full_text, re.IGNORECASE
+    )
+    end_m = re.search(r"For media inquiries|Last Update:", full_text, re.IGNORECASE)
 
-    if release_m and media_m and media_m.start() > release_m.end():
-        raw = full_text[release_m.end() : media_m.start()]
+    if release_m and end_m and end_m.start() > release_m.end():
+        raw = full_text[release_m.end() : end_m.start()]
         SKIP = {"share", "share:", "pdf", ""}
         chunks = re.split(r"\n{2,}", raw)
         paragraphs = [
@@ -110,45 +134,43 @@ def extract_statement_text(url):
         if paragraphs:
             return clean_text("\n\n".join(paragraphs))
 
-    # ── Strategy 2: paragraph tag harvest ────────────────────────────────────
-    # Collect <p> elements that look like statement prose.
-    # Stop when we hit the media-contact line.
-    STOP_RE = re.compile(r"For media inquiries|Implementation Note|Last Update", re.I)
-    OPEN_RE = re.compile(
-        r"^(Available indicators|Recent indicators|Economic activity|"
-        r"The Federal Reserve is committed|The Committee seeks|"
-        r"Information received since|Job gains|Labor market|"
-        r"The labor market)",
-        re.IGNORECASE,
-    )
-
+    # ── Strategy 2: paragraph harvest ────────────────────────────────────────
     all_p = [p.get_text(" ", strip=True) for p in soup.find_all("p")]
-    collecting = False
-    paragraphs = []
-
+    collecting, paragraphs = False, []
     for p in all_p:
         if STOP_RE.search(p):
             break
         if not collecting and OPEN_RE.match(p):
             collecting = True
-        if collecting and len(p.split()) >= 15:
+        if collecting and len(p.split()) >= 12:
             paragraphs.append(p)
-
     if paragraphs:
         return clean_text("\n\n".join(paragraphs))
 
-    # ── Both strategies failed — print diagnostic ─────────────────────────────
-    print("  WARNING: could not extract text. First 600 chars of page:")
-    print("  " + full_text[:600].replace("\n", " "))
+    # ── Both failed ───────────────────────────────────────────────────────────
+    print("  WARNING: extraction failed. Page preview:")
+    print("  " + full_text[:400].replace("\n", " "))
     return None
 
 
 # ── URL discovery ─────────────────────────────────────────────────────────────
 
 def find_statement_urls_since(start_date):
-    """Return sorted list of (date, url) for all statements on or after start_date."""
+    """
+    Return sorted list of (date, url) for all FOMC statements on or after
+    start_date. Scans the annual FOMC press release listing pages.
+
+    Note: The same {year}-press-fomc.htm pattern works back to 2006.
+    Pre-2006 statements use a different archive structure and are not
+    currently supported.
+    """
     found = []
     current_year = date.today().year
+
+    if start_date.year < 2006:
+        print("  Note: pre-2006 statements use a different archive structure.")
+        print("  Scanning from 2006 instead.")
+        start_date = start_date.replace(year=2006, month=1, day=1)
 
     for year in range(start_date.year, current_year + 1):
         listing_url = (
@@ -181,29 +203,56 @@ def find_statement_urls_since(start_date):
     return sorted(set(found))
 
 
-# ── index.html helpers ────────────────────────────────────────────────────────
+# ── JSON backup ───────────────────────────────────────────────────────────────
 
-def get_current_statements(html):
-    m = re.search(
-        r'<script type="application/json" id="stmt-data">\s*(.*?)\s*</script>',
-        html, re.DOTALL,
-    )
-    if not m:
-        raise ValueError("Could not find <script id='stmt-data'> block in index.html")
-    return json.loads(m.group(1))
+def load_json():
+    """Load statements from statements.json, or return empty list if missing."""
+    if JSON_FILE.exists():
+        with open(JSON_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
 
 
-def update_index_html(html, updated_statements):
+def save_json(statements):
+    """Write canonical statements list to statements.json."""
+    statements_sorted = sorted(statements, key=lambda s: s["isoDate"])
+    with open(JSON_FILE, "w", encoding="utf-8") as f:
+        json.dump(statements_sorted, f, indent=2, ensure_ascii=False)
+    print("Saved %d statements to %s." % (len(statements_sorted), JSON_FILE))
+
+
+# ── index.html sync ───────────────────────────────────────────────────────────
+
+def sync_html(statements):
+    """Inject statements list into the <script id='stmt-data'> block in index.html."""
+    if not HTML_FILE.exists():
+        print("Warning: %s not found — skipping HTML sync." % HTML_FILE)
+        return
+
+    with open(HTML_FILE, "r", encoding="utf-8") as f:
+        html = f.read()
+
     m = re.search(
         r'(<script type="application/json" id="stmt-data">)\s*(.*?)\s*(</script>)',
         html, re.DOTALL,
     )
     if not m:
-        raise ValueError("Could not find stmt-data block to update")
-    new_json = json.dumps(updated_statements, indent=2, ensure_ascii=False)
-    replacement = "%s\n%s\n%s" % (m.group(1), new_json, m.group(3))
-    return html[: m.start()] + replacement + html[m.end() :]
+        print("Warning: stmt-data block not found in %s." % HTML_FILE)
+        return
 
+    new_json = json.dumps(
+        sorted(statements, key=lambda s: s["isoDate"]),
+        indent=2, ensure_ascii=False
+    )
+    replacement = "%s\n%s\n%s" % (m.group(1), new_json, m.group(3))
+    updated = html[: m.start()] + replacement + html[m.end() :]
+
+    with open(HTML_FILE, "w", encoding="utf-8") as f:
+        f.write(updated)
+    print("Synced %d statements into %s." % (len(statements), HTML_FILE))
+
+
+# ── Date formatting ───────────────────────────────────────────────────────────
 
 def format_display_date(d):
     try:
@@ -215,23 +264,51 @@ def format_display_date(d):
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Update FOMC statements in statements.json and index.html"
+    )
     parser.add_argument(
         "--backfill", metavar="YYYY-MM-DD",
         help="Fetch all statements from this date forward",
     )
+    parser.add_argument(
+        "--sync", action="store_true",
+        help="Rebuild index.html from statements.json without fetching anything",
+    )
     args = parser.parse_args()
 
-    try:
-        with open("index.html", "r", encoding="utf-8") as f:
-            html = f.read()
-    except FileNotFoundError:
-        print("Error: index.html not found. Run from the repo root.")
-        sys.exit(1)
+    # ── Sync-only mode ────────────────────────────────────────────────────────
+    if args.sync:
+        statements = load_json()
+        if not statements:
+            print("No statements in %s — nothing to sync." % JSON_FILE)
+            return
+        sync_html(statements)
+        print("Sync complete.")
+        return
 
-    current_statements = get_current_statements(html)
-    existing_dates = {s["isoDate"] for s in current_statements}
+    # ── Load existing data ────────────────────────────────────────────────────
+    # Prefer statements.json as the source of truth.
+    # Fall back to reading from index.html if JSON doesn't exist yet.
+    statements = load_json()
 
+    if not statements:
+        # First run: bootstrap from index.html if it has data
+        if HTML_FILE.exists():
+            with open(HTML_FILE, "r", encoding="utf-8") as f:
+                html = f.read()
+            m = re.search(
+                r'<script type="application/json" id="stmt-data">\s*(.*?)\s*</script>',
+                html, re.DOTALL,
+            )
+            if m:
+                statements = json.loads(m.group(1))
+                print("Bootstrapped %d statements from index.html." % len(statements))
+                save_json(statements)
+
+    existing_dates = {s["isoDate"] for s in statements}
+
+    # ── Determine fetch range ─────────────────────────────────────────────────
     if args.backfill:
         try:
             start_date = datetime.strptime(args.backfill, "%Y-%m-%d").date()
@@ -239,11 +316,15 @@ def main():
             print("Error: use YYYY-MM-DD format.")
             sys.exit(1)
         print("Backfill mode: fetching statements since %s" % start_date)
-    else:
-        latest_iso = max(s["isoDate"] for s in current_statements)
+    elif statements:
+        latest_iso = max(s["isoDate"] for s in statements)
         start_date = datetime.strptime(latest_iso, "%Y-%m-%d").date()
         print("Normal mode: checking for statements newer than %s" % latest_iso)
+    else:
+        print("No existing statements found. Run with --backfill YYYY-MM-DD.")
+        sys.exit(1)
 
+    # ── Fetch new statements ──────────────────────────────────────────────────
     candidates = find_statement_urls_since(start_date)
     new_candidates = [
         (d, url) for d, url in candidates
@@ -251,10 +332,12 @@ def main():
     ]
 
     if not new_candidates:
-        print("No new statements found. Nothing to update.")
+        print("No new statements found.")
+        # Still sync HTML in case it was replaced
+        sync_html(statements)
         return
 
-    print("\nFound %d statement(s) to fetch." % len(new_candidates))
+    print("\nFound %d new statement(s) to fetch." % len(new_candidates))
 
     new_entries = []
     for stmt_date, url in new_candidates:
@@ -273,16 +356,12 @@ def main():
         print("  Added: %s" % entry["date"])
 
     if not new_entries:
-        print("No entries extracted. index.html not changed.")
+        print("No entries could be extracted. Nothing saved.")
         return
 
-    all_statements = current_statements + new_entries
-    all_statements.sort(key=lambda s: s["isoDate"])
-
-    updated_html = update_index_html(html, all_statements)
-    with open("index.html", "w", encoding="utf-8") as f:
-        f.write(updated_html)
-
+    all_statements = statements + new_entries
+    save_json(all_statements)
+    sync_html(all_statements)
     print("\nDone. Added %d statement(s)." % len(new_entries))
 
 
