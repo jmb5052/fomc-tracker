@@ -45,11 +45,11 @@ jobs:
       - name: Run backfill
         run: python update_statements.py --backfill ${{ github.event.inputs.start_date }}
 
-      - name: Commit and push updated index.html
+      - name: Commit and push updated files
         run: |
           git config user.name  "FOMC Tracker Bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html
+          git add index.html statements.json
           git diff --cached --quiet \
             && echo "No changes to commit." \
             || (git commit -m "Backfill: add FOMC statements since ${{ github.event.inputs.start_date }}" && git push)
