@@ -42,7 +42,8 @@ jobs:
         run: |
           git config user.name  "FOMC Tracker Bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html statements.json
+          git add index.html
+          git add statements.json 2>/dev/null || true
           git diff --cached --quiet \
             && echo "No changes to commit." \
             || (git commit -m "Auto-update: add new FOMC statement" && git push)
