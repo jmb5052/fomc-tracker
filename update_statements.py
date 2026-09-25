@@ -184,7 +184,7 @@ def find_statement_urls_since(start_date):
 
         soup = BeautifulSoup(resp.text, "html.parser")
         for link in soup.find_all("a", href=True):
-            m = re.search(r"monetary(\d{8})[ab]\.htm", link["href"])
+            m = re.search(r"monetary/?(\d{8})[ab]\.htm", link["href"])
             if not m:
                 continue
             stmt_date = datetime.strptime(m.group(1), "%Y%m%d").date()
