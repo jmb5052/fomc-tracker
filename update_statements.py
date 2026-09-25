@@ -14,14 +14,13 @@ USAGE:
   Sync only (rebuild index.html from statements.json, no fetching):
     python update_statements.py --sync
 
+LISTING PAGE FORMATS:
+  2006-2019: federalreserve.gov/monetarypolicy/fomchistorical{year}.htm
+  2020+:     federalreserve.gov/newsevents/pressreleases/{year}-press-fomc.htm
+
 PARSER NOTES:
-  The Fed has used three release line formats over the years:
-    Modern (2012+):  "For release at 2:00 p.m. EDT"
-    Older (pre-2012): "For immediate release"
-  End anchors:
-    Modern:  "For media inquiries"
-    Older:   "Last Update:"
-  The paragraph fallback covers edge cases using known opening phrases.
+  Start anchors: "For release at X:XX" (modern) or "For immediate release" (pre-2012)
+  End anchors:   "For media inquiries" (modern) or "Last Update:" (pre-2012)
 
 DEPENDENCIES: requests, beautifulsoup4
 """
@@ -54,23 +53,22 @@ JSON_FILE  = Path("statements.json")
 HTML_FILE  = Path("index.html")
 
 
-# ── Text cleaning ─────────────────────────────────────────────────────────────
+# -- Text cleaning -------------------------------------------------------------
 
 def clean_text(text):
     """Normalize Unicode and fix common encoding artifacts from Fed pages."""
     text = unicodedata.normalize("NFKC", text)
-    text = text.replace("\u2011", "-")   # non-breaking hyphen
-    text = text.replace("\u2013", "-")   # en-dash used as hyphen
-    text = text.replace("\u2014", " - ") # em-dash
-    text = re.sub(r"â[\x80-\xbf][\x80-\xbf]", "-", text)  # mojibake
-    text = re.sub(r"\[\d+\]", "", text)  # strip footnote references like [1]
+    text = text.replace("\u2011", "-")
+    text = text.replace("\u2013", "-")
+    text = text.replace("\u2014", " - ")
+    text = re.sub(r"a[\x80-\xbf][\x80-\xbf]", "-", text)
+    text = re.sub(r"\[\d+\]", "", text)
     text = re.sub(r"  +", " ", text)
     return text.strip()
 
 
-# ── Statement extraction ──────────────────────────────────────────────────────
+# -- Statement extraction ------------------------------------------------------
 
-# Opening phrases used across all statement eras (1994–present)
 OPEN_RE = re.compile(
     r"^(Available indicators|Recent indicators|Economic activity|"
     r"The Federal Reserve is committed|The Committee seeks|"
@@ -92,14 +90,8 @@ def extract_statement_text(url):
     """
     Fetch a statement page and extract policy text.
 
-    Strategy 1 — anchor-based:
-      Start: "For release at X:XX" (modern) or "For immediate release" (pre-2012)
-      End:   "For media inquiries" (modern) or "Last Update:" (pre-2012)
-
-    Strategy 2 — paragraph harvest:
-      Collect <p> tags matching known opening phrases until a stop phrase.
-
-    Returns None if both strategies fail; prints diagnostics to aid debugging.
+    Strategy 1: anchor-based (start/end markers).
+    Strategy 2: paragraph harvest using known opening phrases.
     """
     print("  Fetching %s ..." % url)
     try:
@@ -116,7 +108,7 @@ def extract_statement_text(url):
 
     full_text = soup.get_text("\n\n", strip=True)
 
-    # ── Strategy 1: anchor-based ──────────────────────────────────────────────
+    # Strategy 1: anchor-based
     release_m = re.search(
         r"For release at \d+:\d+ [ap]\.m\.|For immediate release",
         full_text, re.IGNORECASE
@@ -134,7 +126,7 @@ def extract_statement_text(url):
         if paragraphs:
             return clean_text("\n\n".join(paragraphs))
 
-    # ── Strategy 2: paragraph harvest ────────────────────────────────────────
+    # Strategy 2: paragraph harvest
     all_p = [p.get_text(" ", strip=True) for p in soup.find_all("p")]
     collecting, paragraphs = False, []
     for p in all_p:
@@ -147,36 +139,41 @@ def extract_statement_text(url):
     if paragraphs:
         return clean_text("\n\n".join(paragraphs))
 
-    # ── Both failed ───────────────────────────────────────────────────────────
     print("  WARNING: extraction failed. Page preview:")
     print("  " + full_text[:400].replace("\n", " "))
     return None
 
 
-# ── URL discovery ─────────────────────────────────────────────────────────────
+# -- URL discovery -------------------------------------------------------------
 
 def find_statement_urls_since(start_date):
     """
     Return sorted list of (date, url) for all FOMC statements on or after
-    start_date. Scans the annual FOMC press release listing pages.
+    start_date.
 
-    Note: The same {year}-press-fomc.htm pattern works back to 2006.
-    Pre-2006 statements use a different archive structure and are not
-    currently supported.
+    Listing page formats:
+      2006-2019: federalreserve.gov/monetarypolicy/fomchistorical{year}.htm
+      2020+:     federalreserve.gov/newsevents/pressreleases/{year}-press-fomc.htm
+
+    Individual statement URLs follow monetary[YYYYMMDD][a|b].htm.
+    The b suffix appears on a small number of pre-2012 statements; we
+    capture it but normalize all URLs to the a form for consistency.
     """
     found = []
     current_year = date.today().year
 
-    if start_date.year < 2006:
-        print("  Note: pre-2006 statements use a different archive structure.")
-        print("  Scanning from 2006 instead.")
-        start_date = start_date.replace(year=2006, month=1, day=1)
+    for year in range(max(start_date.year, 2006), current_year + 1):
+        if year < 2020:
+            listing_url = (
+                "https://www.federalreserve.gov"
+                "/monetarypolicy/fomchistorical%d.htm" % year
+            )
+        else:
+            listing_url = (
+                "https://www.federalreserve.gov"
+                "/newsevents/pressreleases/%d-press-fomc.htm" % year
+            )
 
-    for year in range(start_date.year, current_year + 1):
-        listing_url = (
-            "https://www.federalreserve.gov"
-            "/newsevents/pressreleases/%d-press-fomc.htm" % year
-        )
         print("Scanning %s ..." % listing_url)
         try:
             resp = requests.get(listing_url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
@@ -187,26 +184,26 @@ def find_statement_urls_since(start_date):
 
         soup = BeautifulSoup(resp.text, "html.parser")
         for link in soup.find_all("a", href=True):
-            m = re.search(r"monetary(\d{8})a\.htm", link["href"])
+            m = re.search(r"monetary(\d{8})[ab]\.htm", link["href"])
             if not m:
                 continue
             stmt_date = datetime.strptime(m.group(1), "%Y%m%d").date()
-            if stmt_date >= start_date:
-                full_url = (
-                    "https://www.federalreserve.gov"
-                    "/newsevents/pressreleases/monetary%sa.htm" % m.group(1)
-                )
-                found.append((stmt_date, full_url))
+            if stmt_date < start_date:
+                continue
+            full_url = (
+                "https://www.federalreserve.gov"
+                "/newsevents/pressreleases/monetary%sa.htm" % m.group(1)
+            )
+            found.append((stmt_date, full_url))
 
         time.sleep(REQUEST_DELAY)
 
     return sorted(set(found))
 
 
-# ── JSON backup ───────────────────────────────────────────────────────────────
+# -- JSON backup ---------------------------------------------------------------
 
 def load_json():
-    """Load statements from statements.json, or return empty list if missing."""
     if JSON_FILE.exists():
         with open(JSON_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -214,19 +211,17 @@ def load_json():
 
 
 def save_json(statements):
-    """Write canonical statements list to statements.json."""
     statements_sorted = sorted(statements, key=lambda s: s["isoDate"])
     with open(JSON_FILE, "w", encoding="utf-8") as f:
         json.dump(statements_sorted, f, indent=2, ensure_ascii=False)
     print("Saved %d statements to %s." % (len(statements_sorted), JSON_FILE))
 
 
-# ── index.html sync ───────────────────────────────────────────────────────────
+# -- index.html sync -----------------------------------------------------------
 
 def sync_html(statements):
-    """Inject statements list into the <script id='stmt-data'> block in index.html."""
     if not HTML_FILE.exists():
-        print("Warning: %s not found — skipping HTML sync." % HTML_FILE)
+        print("Warning: %s not found -- skipping HTML sync." % HTML_FILE)
         return
 
     with open(HTML_FILE, "r", encoding="utf-8") as f:
@@ -252,16 +247,16 @@ def sync_html(statements):
     print("Synced %d statements into %s." % (len(statements), HTML_FILE))
 
 
-# ── Date formatting ───────────────────────────────────────────────────────────
+# -- Date formatting -----------------------------------------------------------
 
 def format_display_date(d):
     try:
-        return d.strftime("%B %-d, %Y")   # Linux/macOS
+        return d.strftime("%B %-d, %Y")
     except ValueError:
-        return d.strftime("%B %#d, %Y")   # Windows
+        return d.strftime("%B %#d, %Y")
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# -- Main ----------------------------------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(
@@ -277,23 +272,18 @@ def main():
     )
     args = parser.parse_args()
 
-    # ── Sync-only mode ────────────────────────────────────────────────────────
     if args.sync:
         statements = load_json()
         if not statements:
-            print("No statements in %s — nothing to sync." % JSON_FILE)
+            print("No statements in %s -- nothing to sync." % JSON_FILE)
             return
         sync_html(statements)
         print("Sync complete.")
         return
 
-    # ── Load existing data ────────────────────────────────────────────────────
-    # Prefer statements.json as the source of truth.
-    # Fall back to reading from index.html if JSON doesn't exist yet.
     statements = load_json()
 
     if not statements:
-        # First run: bootstrap from index.html if it has data
         if HTML_FILE.exists():
             with open(HTML_FILE, "r", encoding="utf-8") as f:
                 html = f.read()
@@ -308,7 +298,6 @@ def main():
 
     existing_dates = {s["isoDate"] for s in statements}
 
-    # ── Determine fetch range ─────────────────────────────────────────────────
     if args.backfill:
         try:
             start_date = datetime.strptime(args.backfill, "%Y-%m-%d").date()
@@ -324,7 +313,6 @@ def main():
         print("No existing statements found. Run with --backfill YYYY-MM-DD.")
         sys.exit(1)
 
-    # ── Fetch new statements ──────────────────────────────────────────────────
     candidates = find_statement_urls_since(start_date)
     new_candidates = [
         (d, url) for d, url in candidates
@@ -333,7 +321,6 @@ def main():
 
     if not new_candidates:
         print("No new statements found.")
-        # Still sync HTML in case it was replaced
         sync_html(statements)
         return
 
