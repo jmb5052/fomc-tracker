@@ -58,8 +58,10 @@ HTML_FILE  = Path("index.html")
 def clean_text(text):
     """Normalize Unicode and fix common encoding artifacts from Fed pages."""
     text = unicodedata.normalize("NFKC", text)
-    text = text.replace("\u2011", "-")
-    text = text.replace("\u2013", "-")
+    # NFKC turns the Fed's non-breaking hyphen (U+2011) into U+2010, so
+    # normalize every hyphen/dash variant to a plain ASCII hyphen.
+    for ch in ("\u2010", "\u2011", "\u2012", "\u2013", "\u2212"):
+        text = text.replace(ch, "-")
     text = text.replace("\u2014", " - ")
     text = re.sub(r"a[\x80-\xbf][\x80-\xbf]", "-", text)
     text = re.sub(r"\[\d+\]", "", text)
@@ -142,6 +144,102 @@ def extract_statement_text(url):
     print("  WARNING: extraction failed. Page preview:")
     print("  " + full_text[:400].replace("\n", " "))
     return None
+
+
+# -- Policy rate parsing -------------------------------------------------------
+#
+# Every statement since 1994 names the policy rate in its decision sentence.
+#   Range era (Dec 2008+):  "...target range for the federal funds rate at 3-1/2 to 3-3/4 percent"
+#                           "...by 1/4 percentage point to 3-3/4 to 4 percent"
+#                           "...of 0 to 1/4 percent"
+#   Single-target era:      "...target for the federal funds rate at 5-1/4 percent"
+#                           "...target for the federal funds rate 75 basis points to 3-1/2 percent"
+# We store the upper bound of the range (or the single target before Dec 2008).
+# Statements that never mention the rate (e.g. Aug 17 2007, Oct 11 2019) carry
+# the previous meeting's rate forward.
+
+_NUM = r"(\d+-\d+/\d+|\d+/\d+|\d+)"
+RANGE_RE  = re.compile(r"target range for the federal funds rate[^.]*?\b" + _NUM + r" to " + _NUM + r" percent", re.I)
+SINGLE_RE = re.compile(r"target for the federal funds rate[^.]*?\b(?:at|to|of) " + _NUM + r" percent", re.I)
+
+
+def _num(s):
+    """'3-3/4' -> 3.75, '1/4' -> 0.25, '4' -> 4.0"""
+    if "-" in s:
+        whole, frac = s.split("-", 1)
+    elif "/" in s:
+        whole, frac = "0", s
+    else:
+        whole, frac = s, ""
+    val = float(whole)
+    if frac:
+        n, d = frac.split("/")
+        val += float(n) / float(d)
+    return val
+
+
+def parse_rate(text):
+    """Return the policy rate (range upper bound or single target), or None."""
+    policy = text.split("Voting for", 1)[0]   # never read the dissent paragraph
+    policy = re.sub("[\u2010\u2011\u2012\u2013\u2212]", "-", policy)  # stored text may predate the hyphen fix
+    m = RANGE_RE.search(policy)
+    if m:
+        return _num(m.group(2))
+    m = SINGLE_RE.search(policy)
+    if m:
+        return _num(m.group(1))
+    return None
+
+
+# Confirmed against FRED DFEDTAR / DFEDTARU. Used only to check the parser.
+_V = {
+    2006: ("0131 0328 0510 0629 0808 0920 1025 1212", "4.5 4.75 5 5.25 5.25 5.25 5.25 5.25"),
+    2007: ("0131 0321 0509 0628 0807 0817 0918 1031 1211", "5.25 5.25 5.25 5.25 5.25 5.25 4.75 4.5 4.25"),
+    2008: ("0122 0130 0318 0430 0625 0805 0916 1008 1029 1216", "3.5 3 2.25 2 2 2 2 1.5 1 0.25"),
+    2015: ("1216", "0.5"),
+    2016: ("1214", "0.75"),
+    2017: ("0315 0614 1213", "1 1.25 1.5"),
+    2018: ("0321 0613 0926 1219", "1.75 2 2.25 2.5"),
+    2019: ("0731 0918 1011 1030", "2.25 2 2 1.75"),
+    2020: ("0303 0315", "1.25 0.25"),
+    2022: ("0316 0504 0615 0727 0921 1102 1214", "0.5 1 1.75 2.5 3.25 4 4.5"),
+    2023: ("0201 0322 0503 0726", "4.75 5 5.25 5.5"),
+    2024: ("0918 1107 1218", "5 4.75 4.5"),
+    2025: ("0917 1029 1210", "4.25 4 3.75"),
+    2026: ("0916", "4"),
+}
+VERIFIED = {}
+for _y, (_ds, _rs) in _V.items():
+    for _d, _r in zip(_ds.split(), _rs.split()):
+        VERIFIED["%d-%s-%s" % (_y, _d[:2], _d[2:])] = float(_r)
+
+
+def fill_rates(statements):
+    """
+    Give every statement a 'rate'. Parses the stored text for any statement
+    missing one; carries the previous rate forward when the text has none.
+    Returns True if anything changed.
+    """
+    changed, prev, mismatches = False, None, 0
+    for s in sorted(statements, key=lambda s: s["isoDate"]):
+        if "rate" not in s:
+            r = parse_rate(s["text"])
+            how = "parsed"
+            if r is None:
+                r, how = prev, "carried forward"
+            if r is not None:
+                s["rate"] = r
+                changed = True
+                print("  Rate %s: %.2f%% (%s)" % (s["isoDate"], r, how))
+        exp = VERIFIED.get(s["isoDate"])
+        if exp is not None and s.get("rate") is not None and abs(s["rate"] - exp) > 1e-9:
+            mismatches += 1
+            print("  WARNING rate mismatch %s: got %.2f, expected %.2f" % (s["isoDate"], s["rate"], exp))
+        if s.get("rate") is not None:
+            prev = s["rate"]
+    if changed:
+        print("Rate check: %d mismatch(es) against verified values." % mismatches)
+    return changed
 
 
 # -- URL discovery -------------------------------------------------------------
@@ -296,6 +394,10 @@ def main():
                 print("Bootstrapped %d statements from index.html." % len(statements))
                 save_json(statements)
 
+    rates_changed = fill_rates(statements)
+    if rates_changed:
+        save_json(statements)
+
     existing_dates = {s["isoDate"] for s in statements}
 
     if args.backfill:
@@ -347,6 +449,7 @@ def main():
         return
 
     all_statements = statements + new_entries
+    fill_rates(all_statements)
     save_json(all_statements)
     sync_html(all_statements)
     print("\nDone. Added %d statement(s)." % len(new_entries))
